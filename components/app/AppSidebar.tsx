@@ -20,11 +20,18 @@ const AppSidebar = () => {
   }));
 
   // Always include all agents and dashboard - ensure all links are visible
-  // Layout: [Aloha, Studio, Dashboard (large), Sync, Insight]
+  // Layout: [Sync, Aloha, Dashboard (large), Studio, Insight]
+  const syncLink = agentLinks.find(link => link.agentKey === "sync");
+  const alohaLink = agentLinks.find(link => link.agentKey === "aloha");
+  const studioLink = agentLinks.find(link => link.agentKey === "studio");
+  const insightLink = agentLinks.find(link => link.agentKey === "insight");
+
   const allLinks = [
-    ...agentLinks.slice(0, 2), // First two agents (aloha, studio)
+    syncLink!,
+    alohaLink!,
     { href: "/app", label: t("navDashboard"), icon: LayoutDashboard, isLarge: true, agentKey: null },
-    ...agentLinks.slice(2), // Remaining agents (sync, insight)
+    studioLink!,
+    insightLink!,
   ];
 
   // Debug: Log to ensure all links are present (remove in production if needed)

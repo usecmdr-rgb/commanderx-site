@@ -27,7 +27,7 @@ export default function AlphaPage() {
   return (
     <div className="space-y-8">
       <header>
-        <p className="text-sm uppercase tracking-widest text-slate-500">Alpha agent</p>
+        <p className="text-sm uppercase tracking-widest text-slate-500">Aloha agent</p>
         <h1 className="text-3xl font-semibold">Calls & appointments overview</h1>
       </header>
       <section className="rounded-3xl border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/40">

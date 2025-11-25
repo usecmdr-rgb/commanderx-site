@@ -171,7 +171,7 @@ const SyncPage = () => {
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Xi draft</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Sync draft</p>
                 <p className="mt-1 rounded-2xl bg-slate-900/90 p-3 text-sm text-white dark:bg-white/10 dark:text-white">
                   {selectedEmail.draft || "Placeholder draft goes here."}
                 </p>
@@ -185,7 +185,7 @@ const SyncPage = () => {
                 </button>
               </div>
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Chat with Xi</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Chat with Sync</h3>
                 <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                   {chatMessages.map((message, index) => (
                     <div
@@ -208,7 +208,7 @@ const SyncPage = () => {
                 <form onSubmit={handleChat} className="mt-3 flex gap-2">
                   <input
                     name="message"
-                    placeholder="Tell Xi how to change or edit the draft..."
+                    placeholder="Tell Sync how to change or edit the draft..."
                     disabled={isProcessing}
                     className="flex-1 rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-xs focus:border-brand-accent focus:outline-none disabled:opacity-50 dark:border-slate-700"
                   />
@@ -223,7 +223,7 @@ const SyncPage = () => {
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">Select an email to preview Xi&apos;s draft.</p>
+            <p className="mt-4 text-sm text-slate-500">Select an email to preview Sync&apos;s draft.</p>
           )}
         </div>
       </div>

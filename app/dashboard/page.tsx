@@ -66,22 +66,22 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-semibold mb-8">Dashboard</h1>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Alpha - Calls</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Aloha - Calls</p>
             <p className="text-2xl font-semibold">{latestStats.alpha_calls_total}</p>
             <p className="text-sm text-slate-500 mt-1">Answered: {Math.max(latestStats.alpha_calls_total - latestStats.alpha_calls_missed, 0)}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Xi - Emails</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Sync - Emails</p>
             <p className="text-2xl font-semibold">{latestStats.xi_important_emails}</p>
             <p className="text-sm text-slate-500 mt-1">Invoices: {latestStats.xi_invoices}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Mu - Media</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Studio - Media</p>
             <p className="text-2xl font-semibold">{latestStats.mu_media_edits}</p>
             <p className="text-sm text-slate-500 mt-1">Edits completed</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Beta - Insights</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Insight - Insights</p>
             <p className="text-2xl font-semibold">{latestStats.beta_insights_count}</p>
             <p className="text-sm text-slate-500 mt-1">Generated</p>
           </div>

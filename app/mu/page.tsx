@@ -1183,7 +1183,7 @@ export default function StudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agent: "mu",
+          agent: "studio",
           message,
           taskType: "default",
           context: {
@@ -1201,14 +1201,14 @@ export default function StudioPage() {
         ...prev,
         {
           role: "assistant",
-          content: isOk ? json.reply || "No reply from MU." : json.error || "Error from MU.",
+          content: isOk ? json.reply || "No reply from Studio." : json.error || "Error from Studio.",
         },
       ]);
     } catch (error) {
       console.error(error);
       setMuMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Error talking to MU." },
+        { role: "assistant", content: "Error talking to Studio." },
       ]);
     } finally {
       setMuLoading(false);
@@ -1376,7 +1376,7 @@ export default function StudioPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="mu-content">
+      <div className="studio-content">
         {activeTab === "edit" && (
           <>
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -1384,7 +1384,7 @@ export default function StudioPage() {
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-sm shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40">
             <p className="font-semibold">Drop image or video</p>
             <p className="mt-2 text-slate-500">
-              Mu only applies filters, zoom, crops, and text overlays--never changes the original.
+              Studio only applies filters, zoom, crops, and text overlays--never changes the original.
             </p>
             <label className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">
               Browse files
@@ -1800,7 +1800,7 @@ export default function StudioPage() {
                     if (!muImagePreviewUrl) return;
                     const link = document.createElement("a");
                     link.href = muImagePreviewUrl;
-                    link.download = "mu-image.png";
+                    link.download = "studio-image.png";
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);

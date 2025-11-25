@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useAgentStats, emptyAgentStats } from "@/hooks/useAgentStats";
-import DailyBriefCard from "@/components/beta/DailyBriefCard";
-import InsightGenerator from "@/components/beta/InsightGenerator";
-import WorkflowManager from "@/components/beta/WorkflowManager";
+import DailyBriefCard from "@/components/insight/DailyBriefCard";
+import InsightGenerator from "@/components/insight/InsightGenerator";
+import WorkflowManager from "@/components/insight/WorkflowManager";
 
 const timeframes = [
   { id: "daily", label: "Daily" },
@@ -21,7 +21,7 @@ const mockRollupStats = {
 const insights = {
   daily: [
     "Great job! Missed calls dropped by 20% today.",
-    "Two invoices remain unpaid; Xi tagged them for follow-up.",
+    "Two invoices remain unpaid; Sync tagged them for follow-up.",
   ],
   weekly: [
     "Your response time improved by 14% week-over-week.",
@@ -29,7 +29,7 @@ const insights = {
   ],
   monthly: [
     "Subscription renewals increased 12%.",
-    "Media refresh cadence looks healthy--keep sharing Mu briefs with marketing.",
+    "Media refresh cadence looks healthy--keep sharing Studio briefs with marketing.",
   ],
 };
 
@@ -78,29 +78,29 @@ export default function InsightPage() {
         <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4 text-center dark:border-slate-800 dark:bg-slate-900/60">
           <p className="text-xs uppercase tracking-widest text-slate-500">Insights generated</p>
           <p className="mt-2 text-3xl font-semibold">{latestStats.beta_insights_count}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Beta has generated {latestStats.beta_insights_count} insights this period.</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Insight has generated {latestStats.beta_insights_count} insights this period.</p>
         </div>
       </section>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm font-semibold dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-xs uppercase tracking-widest text-slate-500">Calls</p>
           <p className="mt-2 text-2xl">{current.calls}</p>
-          <p className="text-xs text-slate-500">from Alpha</p>
+          <p className="text-xs text-slate-500">from Aloha</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm font-semibold dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-xs uppercase tracking-widest text-slate-500">Emails</p>
           <p className="mt-2 text-2xl">{current.emails}</p>
-          <p className="text-xs text-slate-500">from Xi</p>
+          <p className="text-xs text-slate-500">from Sync</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm font-semibold dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-xs uppercase tracking-widest text-slate-500">Media items</p>
           <p className="mt-2 text-2xl">{current.media}</p>
-          <p className="text-xs text-slate-500">from Mu</p>
+          <p className="text-xs text-slate-500">from Studio</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm font-semibold dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-xs uppercase tracking-widest text-slate-500">Time saved</p>
           <p className="mt-2 text-2xl">{current.timeSaved} hrs</p>
-          <p className="text-xs text-slate-500">Beta estimate</p>
+          <p className="text-xs text-slate-500">Insight estimate</p>
         </div>
       </section>
       <section className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
@@ -130,9 +130,9 @@ export default function InsightPage() {
         </div>
       </section>
 
-      {/* Beta Intelligence Features */}
+      {/* Insight Intelligence Features */}
       <section className="mt-4">
-        <h2 className="text-xl font-semibold mb-4">Beta Intelligence</h2>
+        <h2 className="text-xl font-semibold mb-4">Insight Intelligence</h2>
         <div className="grid gap-4 lg:grid-cols-2">
           <DailyBriefCard />
           <InsightGenerator />

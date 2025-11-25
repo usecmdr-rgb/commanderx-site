@@ -38,13 +38,13 @@ async function queryAloha(question: string, timeframe: string) {
         : "No new appointments today",
     ],
     decisions: missedCalls > 0 ? [{
-      id: "decision-alpha-calls",
+      id: "decision-aloha-calls",
       decision: "Follow up on missed calls",
       context: `${missedCalls} calls need attention`,
       urgency: "high" as const,
     }] : [],
     risks: missedCalls > totalCalls * 0.1 ? [{
-      id: "risk-alpha-missed",
+      id: "risk-aloha-missed",
       risk: "High missed call rate",
       severity: "medium" as const,
       agent: "aloha" as const,
@@ -98,20 +98,20 @@ async function querySync(question: string, timeframe: string) {
     ],
     decisions: [
       ...needsReply.slice(0, 2).map((e, idx) => ({
-        id: `decision-xi-${e.id}`,
+        id: `decision-sync-${e.id}`,
         decision: `Reply to: ${e.subject}`,
         context: `From ${e.sender}`,
         urgency: "high" as const,
       })),
       ...(payments > 0 ? [{
-        id: "decision-xi-payments",
+        id: "decision-sync-payments",
         decision: "Process payment-related emails",
         context: `${payments} items need attention`,
         urgency: "medium" as const,
       }] : []),
     ],
     risks: unreadEmails > 10 ? [{
-      id: "risk-xi-unread",
+      id: "risk-sync-unread",
       risk: "High unread email backlog",
       severity: "medium" as const,
       agent: "sync" as const,
@@ -157,13 +157,13 @@ async function queryStudio(question: string, timeframe: string) {
         : "Engagement stable",
     ],
     decisions: avgEngagement < 1.5 ? [{
-      id: "decision-mu-engagement",
+      id: "decision-studio-engagement",
       decision: "Review and refresh content strategy",
       context: "Engagement below target",
       urgency: "medium" as const,
     }] : [],
     risks: avgEngagement < 1 ? [{
-      id: "risk-mu-engagement",
+      id: "risk-studio-engagement",
       risk: "Very low engagement rate",
       severity: "high" as const,
       agent: "studio" as const,

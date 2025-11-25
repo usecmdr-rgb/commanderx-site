@@ -47,41 +47,39 @@ You are Studio, CMDᴿ's visual design and content assistant.
 
 Your job is to help the user edit their media. You can modify text overlays, fonts, colors, sizes, effects, alignment, positions, brightness, contrast, saturation, and more.
 
-When the user asks for a change, DO NOT reply with plain text unless they explicitly ask for advice or explanation.
+CRITICAL: When the user asks for a change, you MUST use a tool call. DO NOT reply with plain text unless they explicitly ask for advice or explanation.
 
-Instead, ALWAYS respond using the proper tool call to update the editor state directly.
+The user's message will include [Current Editor State] showing the current values. ALWAYS use these current values to calculate the new values.
 
-Examples of user requests you MUST convert into tool actions:
-- "brighten image" or "make it brighter" → update_adjustments with brightness: 120 (increase from current)
-- "darken image" or "make it darker" → update_adjustments with brightness: 80 (decrease from current)
-- "increase brightness" → update_adjustments with brightness: 120
-- "decrease brightness" → update_adjustments with brightness: 80
-- "more contrast" or "increase contrast" → update_adjustments with contrast: 120
-- "less contrast" or "decrease contrast" → update_adjustments with contrast: 80
-- "more saturation" or "increase saturation" → update_adjustments with saturation: 120
-- "less saturation" or "decrease saturation" → update_adjustments with saturation: 80
-- "Make the title bigger" → update_text_item with fontSize increase (e.g., fontSize: 48 if current is 32)
-- "Change it to gold letters" → update_text_item with color "#FFD700"
-- "Add a glowing subtitle saying 'Grand Opening'" → add_text_item with content "Grand Opening" and effectType "glow"
-- "Move the text higher" → update_text_item with position.y decrease (e.g., position: { x: 50, y: 30 })
-- "Add new text: Only 3 left in stock" → add_text_item with content "Only 3 left in stock"
-- "Make background darker" → update_adjustments with brightness decrease
-- "Add outline to the text" → update_text_item with effectType "outline"
-- "Change font to Roboto" → update_text_item with fontFamily "Roboto, sans-serif"
-- "Make text bolder" → update_text_item with bold: true
-- "Make text bigger and bolder" → update_text_item with fontSize increase AND bold: true
+RULES FOR ADJUSTMENTS:
+- If current brightness is shown, use it. If not shown, assume 100 (neutral).
+- "brighten", "make brighter", "increase brightness" → add 20-50 to current brightness (max 200)
+- "darken", "make darker", "decrease brightness" → subtract 20-50 from current brightness (min 0)
+- "more contrast", "increase contrast" → add 20-50 to current contrast (max 200)
+- "less contrast", "decrease contrast" → subtract 20-50 from current contrast (min 0)
+- "more saturation", "increase saturation" → add 20-50 to current saturation (max 200)
+- "less saturation", "decrease saturation" → subtract 20-50 from current saturation (min 0)
 
-IMPORTANT: For brightness/contrast/saturation adjustments:
-- Current default/neutral values are: brightness: 100, contrast: 100, saturation: 100
-- To "brighten" or "increase brightness", set brightness to 120-150
-- To "darken" or "decrease brightness", set brightness to 50-80
-- To "increase contrast", set contrast to 120-150
-- To "decrease contrast", set contrast to 50-80
-- Always provide the absolute value, not a relative change
+RULES FOR TEXT ITEMS:
+- If the user refers to "the text" or "title" and there's only one text item, update that one.
+- If multiple text items exist, update the first one or ask which one.
+- "bigger", "increase size" → add 8-16 to current fontSize
+- "smaller", "decrease size" → subtract 8-16 from current fontSize
+- "higher", "move up" → decrease position.y by 5-10
+- "lower", "move down" → increase position.y by 5-10
+- "left" → decrease position.x by 5-10
+- "right" → increase position.x by 5-10
 
-You have access to the current editor state through the context. Use it to understand what text items exist and their current properties.
+EXAMPLES:
+- User: "brighten image" (current: brightness: 100) → update_adjustments with brightness: 130
+- User: "make it darker" (current: brightness: 120) → update_adjustments with brightness: 90
+- User: "more contrast" (current: contrast: 100) → update_adjustments with contrast: 130
+- User: "Make the text bigger" (current: fontSize: 32) → update_text_item with fontSize: 44
+- User: "Change to gold" → update_text_item with color: "#FFD700"
+- User: "Add text: Sale" → add_text_item with content: "Sale"
+- User: "Move text higher" (current: position.y: 50) → update_text_item with position: {x: 50, y: 40}
 
-ALWAYS use tool calls to make changes. Only provide text responses when the user asks for explanations, suggestions, or advice.
+ALWAYS use tool calls. Only provide text when asked for explanations.
 `.trim(),
 };
 
@@ -146,7 +144,7 @@ async function loadOpenFollowups(
     })
     .join("\n");
 
-  return `Here are this user's open follow-ups from Alpha/Xi:\n${bullets}`;
+  return `Here are this user's open follow-ups from Aloha/Sync:\n${bullets}`;
 }
 
 async function buildBetaStatsContext(
@@ -185,7 +183,7 @@ async function buildBetaStatsContext(
     openFollowupsResult.error ||
     emailRowsResult.error
   ) {
-    console.error("Beta stats lookup failed", {
+    console.error("Insight stats lookup failed", {
       totalCallsError: totalCallsResult.error,
       needsFollowupError: needsFollowupCallsResult.error,
       openFollowupsError: openFollowupsResult.error,
@@ -365,19 +363,30 @@ export async function POST(req: Request) {
       conversationId = "dev-conversation-id";
     }
 
-    const { data: historicalMessages, error: historyError } = await supabase
-      .from("agent_messages")
-      .select("role, content, created_at")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: false })
-      .limit(MAX_CONTEXT_MESSAGES);
+    // Load conversation history (allow failure in dev mode)
+    let historicalMessages: any[] | null = null;
+    if (conversationId && conversationId !== "dev-conversation-id") {
+      const { data, error: historyError } = await supabase
+        .from("agent_messages")
+        .select("role, content, created_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(MAX_CONTEXT_MESSAGES);
 
-    if (historyError) {
-      console.error("Conversation history load failed:", historyError);
-      return NextResponse.json(
-        { error: "Failed to load conversation history" },
-        { status: 500 }
-      );
+      if (historyError) {
+        console.error("Conversation history load failed:", historyError);
+        // In dev mode, continue without history. In production, this might be a real issue.
+        if (process.env.NODE_ENV === "production") {
+          return NextResponse.json(
+            { error: "Failed to load conversation history" },
+            { status: 500 }
+          );
+        }
+        // In dev mode, just log and continue with empty history
+        console.warn("Continuing without conversation history in dev mode");
+      } else {
+        historicalMessages = data;
+      }
     }
 
     const orderedHistory =
@@ -424,13 +433,59 @@ export async function POST(req: Request) {
       }))
     );
 
-    // For Studio agent, send plain text messages only (no image_url for now)
-    // Vision support disabled to avoid "Unauthorized" errors with local/blob URLs
+    // For Studio agent, include context and image in the message
     if (agent === "studio") {
-      openAiMessages.push({
-        role: "user",
-        content: message,
-      });
+      // Build context string for Studio agent
+      const contextParts: string[] = [];
+      
+      if (context.brightness !== undefined) {
+        contextParts.push(`Current brightness: ${context.brightness}`);
+      }
+      if (context.contrast !== undefined) {
+        contextParts.push(`Current contrast: ${context.contrast}`);
+      }
+      if (context.saturation !== undefined) {
+        contextParts.push(`Current saturation: ${context.saturation}`);
+      }
+      if (context.textItems && Array.isArray(context.textItems) && context.textItems.length > 0) {
+        contextParts.push(`Current text items (${context.textItems.length}):`);
+        context.textItems.forEach((item: any, idx: number) => {
+          contextParts.push(`  ${idx + 1}. "${item.content}" - ${item.fontSize}px, ${item.color}, ${item.fontFamily}${item.bold ? ', bold' : ''}${item.italic ? ', italic' : ''}${item.effectType && item.effectType !== 'none' ? `, ${item.effectType} effect` : ''}`);
+        });
+      }
+      
+      const contextString = contextParts.length > 0 
+        ? `[Current Editor State]\n${contextParts.join('\n')}\n\n[User Request]\n${message}`
+        : message;
+      
+      // Include image if available (should be data URL from client)
+      if (context.imagePreviewUrl && typeof context.imagePreviewUrl === "string" && context.imagePreviewUrl.startsWith("data:image/")) {
+        // For Studio, send image as part of the message using vision API
+        openAiMessages.push({
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: contextString,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: context.imagePreviewUrl,
+              },
+            },
+          ],
+        });
+      } else {
+        // If no image or invalid format, just send text with image description
+        const imageDescription = context.imageName 
+          ? `\n[Note: User is editing image: ${context.imageName}]`
+          : "";
+        openAiMessages.push({
+          role: "user",
+          content: contextString + imageDescription,
+        });
+      }
     } else {
       // For all other agents, send plain text messages
       openAiMessages.push({ role: "user", content: message });

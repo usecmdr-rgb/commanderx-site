@@ -6,6 +6,7 @@ import { mockMediaItems } from "@/lib/data";
 import { useAgentStats, emptyAgentStats } from "@/hooks/useAgentStats";
 import { useAppState } from "@/context/AppStateContext";
 import { useConnectedAccounts } from "@/hooks/useConnectedAccounts";
+import { supabaseBrowserClient } from "@/lib/supabaseClient";
 import type { ConnectedAccountType } from "@/types";
 import { Download, Facebook, Instagram, Maximize2, X, Plus, Trash2, Bold, Italic, Underline, Sparkles, Send, Linkedin, Globe, Check, Loader2, SlidersHorizontal, Wand2, Crop, RotateCw, RotateCcw, FlipHorizontal, FlipVertical, ChevronDown, ChevronUp, Type, Image as ImageIcon, Video, ArrowUp, ArrowDown } from "lucide-react";
 
@@ -2351,6 +2352,23 @@ export default function StudioPage() {
     right: "items-center justify-end text-right pr-8 pl-4",
   };
 
+  // Helper function to convert blob URL to base64 data URL
+  const blobToDataURL = async (blobUrl: string): Promise<string | null> => {
+    try {
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Failed to convert blob to data URL:", error);
+      return null;
+    }
+  };
+
   const handleMuSend = async () => {
     const message = muInput.trim();
     if (!message || muLoading) return;
@@ -2361,16 +2379,38 @@ export default function StudioPage() {
     setMuLoading(true);
 
     try {
+      // Get authentication token
+      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+      const authToken = session?.access_token || (process.env.NODE_ENV !== "production" ? "dev-token" : null);
+
+      // Convert blob URL to data URL if needed
+      let imageDataUrl: string | null = null;
+      if (activeAsset?.previewUrl) {
+        if (activeAsset.previewUrl.startsWith("blob:")) {
+          imageDataUrl = await blobToDataURL(activeAsset.previewUrl);
+        } else if (activeAsset.previewUrl.startsWith("data:image/")) {
+          imageDataUrl = activeAsset.previewUrl;
+        } else {
+          // For other URLs (http/https), use as-is if publicly accessible
+          imageDataUrl = activeAsset.previewUrl;
+        }
+      }
+
       const res = await fetch("/api/brain", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+        },
         body: JSON.stringify({
           agent: "studio",
           message,
           taskType: "default",
           context: {
             brightness: adjustments.brightness,
-            imagePreviewUrl: activeAsset?.previewUrl ?? null,
+            contrast: adjustments.contrast,
+            saturation: adjustments.saturation,
+            imagePreviewUrl: imageDataUrl,
             imageName: activeAsset?.name ?? null,
             textItems: textItems.map((item) => ({
               id: item.id,
@@ -2498,19 +2538,35 @@ export default function StudioPage() {
         }
       } else {
         // Regular text response (fallback or explanation)
-        setMuMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: isOk ? json.reply || "No reply from Studio." : json.error || "Error from Studio.",
-          },
-        ]);
+        if (!isOk) {
+          // Handle unauthorized or other errors
+          const errorMessage = json.error || "Error from Studio.";
+          if (res.status === 401) {
+            setMuMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: "Authentication error. Please try logging in again." },
+            ]);
+          } else {
+            setMuMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: `Error: ${errorMessage}` },
+            ]);
+          }
+        } else {
+          setMuMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: json.reply || "No reply from Studio.",
+            },
+          ]);
+        }
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error("Studio chat error:", error);
       setMuMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Error talking to Studio." },
+        { role: "assistant", content: `Error talking to Studio: ${error?.message || "Unknown error"}` },
       ]);
     } finally {
       setMuLoading(false);
@@ -2852,7 +2908,7 @@ export default function StudioPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="mu-content">
+      <div className="studio-content">
         {activeTab === "edit" && (
           <div className="space-y-6">
             {/* Asset Strip - Show when we have assets - Full width at top */}
@@ -2916,7 +2972,7 @@ export default function StudioPage() {
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-sm shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40 transition-all duration-500 ease-in-out">
               <p className="font-semibold">Drop image or video</p>
               <p className="mt-2 text-slate-500">
-                Mu only applies filters, zoom, crops, and text overlays--never changes the original.
+                Studio only applies filters, zoom, crops, and text overlays--never changes the original.
               </p>
               <label className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">
                 Browse files

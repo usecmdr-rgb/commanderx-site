@@ -214,12 +214,11 @@ export const translations = {
     placeholderChart: "Placeholder chart. Swap with real analytics (Recharts, Chart.js, etc.).",
     
     // Home Page Agent Names/Roles
-    alohaVoice: "Aloha / Voice",
+    alphaVoice: "Aloha / Voice",
     syncInbox: "Sync / Inbox",
     studioMedia: "Studio / Media",
     insightInsights: "Insight / Insights",
     // Legacy keys (kept for backward compatibility)
-    alphaVoice: "Aloha / Voice",
     xiInbox: "Sync / Inbox",
     muMedia: "Studio / Media",
     betaInsights: "Insight / Insights",

@@ -501,7 +501,7 @@ const SyncPage = () => {
       }
 
       const res = await fetch("/api/calendar/auth", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${session?.access_token || ""}` },
       });
 
       const data = await res.json();

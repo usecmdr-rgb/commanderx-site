@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthFromRequest } from "@/lib/auth-helpers";
-import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
-import { searchAvailableNumbers } from "@/lib/twilioClient";
 
 /**
  * GET /api/telephony/twilio/available-numbers
@@ -9,52 +7,35 @@ import { searchAvailableNumbers } from "@/lib/twilioClient";
  * Search for available Twilio phone numbers
  * 
  * Query params:
- * - country (string, default "US")
- * - areaCode (string, optional)
- * 
- * Returns:
- * - Array of available phone numbers
+ * - country: string (default: "US")
+ * - areaCode: string (optional)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Ensure user is authenticated
     const user = await requireAuthFromRequest(request);
-    const userId = user.id;
-
-    // Check if user already has an active number
-    const supabase = getSupabaseServerClient();
-    const { data: existingNumber } = await supabase
-      .from("user_phone_numbers")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .single();
-
-    if (existingNumber) {
-      return NextResponse.json(
-        {
-          error: "already_has_number",
-          message: "You already have an active Aloha number. Release it to choose a new one.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const country = searchParams.get("country") || "US";
-    const areaCode = searchParams.get("areaCode") || undefined;
+    const areaCode = searchParams.get("areaCode");
 
-    // Search for available numbers
-    const numbers = await searchAvailableNumbers(country, areaCode);
+    // TODO: Integrate with actual Twilio API
+    // For now, return mock data
+    // In production, you would:
+    // 1. Call Twilio's AvailablePhoneNumber API
+    // 2. Search by country and area code
+    // 3. Return list of available numbers
 
-    return NextResponse.json(numbers);
+    const mockNumbers = [
+      { phoneNumber: `+1${areaCode || "415"}5550001`, friendlyName: "San Francisco, CA" },
+      { phoneNumber: `+1${areaCode || "415"}5550002`, friendlyName: "San Francisco, CA" },
+      { phoneNumber: `+1${areaCode || "415"}5550003`, friendlyName: "San Francisco, CA" },
+    ];
+
+    return NextResponse.json(mockNumbers);
   } catch (error: any) {
-    console.error("Error in /api/telephony/twilio/available-numbers:", error);
+    console.error("Error searching available numbers:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

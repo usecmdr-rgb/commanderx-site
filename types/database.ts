@@ -20,6 +20,7 @@ export type DataRetentionReason = "trial_expired" | "paid_canceled" | "paid_paus
 
 export type AgentType = "aloha" | "studio" | "sync" | "insight";
 export type MessageRole = "user" | "assistant" | "system";
+export type VoicemailMode = "none" | "voicemail_only" | "receptionist";
 
 /**
  * Profiles table

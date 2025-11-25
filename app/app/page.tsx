@@ -150,23 +150,23 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-widest text-slate-500">{t("dashboard")}</p>
-          <h1 className="text-3xl font-semibold">{t("resumeOfTheDay")}</h1>
+    <div className="space-y-4 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm uppercase tracking-widest text-slate-500">{t("dashboard")}</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold">{t("resumeOfTheDay")}</h1>
           {businessInfo.businessName && (
-            <p className="text-sm text-slate-500">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               {t("forBusiness")} {businessInfo.businessName} - {businessInfo.location || t("locationTbd")}
             </p>
           )}
         </div>
-        <div className="flex gap-2 rounded-full border border-slate-200 p-1 text-sm font-semibold dark:border-slate-800">
+        <div className="flex gap-1 sm:gap-2 rounded-full border border-slate-200 p-1 text-xs sm:text-sm font-semibold dark:border-slate-800 overflow-x-auto">
           {timeframes.map((item) => (
             <button
               key={item.id}
               onClick={() => setTimeframe(item.id as keyof typeof dataByTimeframe)}
-              className={`rounded-full px-4 py-2 ${
+              className={`rounded-full px-3 sm:px-4 py-1.5 sm:py-2 whitespace-nowrap flex-shrink-0 ${
                 timeframe === item.id
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                   : "text-slate-500"
@@ -177,59 +177,59 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
         {resume.map((card) => {
           const agent = agents.find((a) => a.key === card.key);
           const agentConfig = AGENT_BY_ID[card.key];
           const Icon = agentConfig?.icon;
           return (
-            <div key={card.title} className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 text-center">
-              <div className="flex flex-col items-center gap-4">
+            <div key={card.title} className="rounded-3xl border border-slate-200 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 text-center">
+              <div className="flex flex-col items-center gap-3 sm:gap-4">
                 {agent && Icon && (
                   <Link
                     href={agentRouteMap[card.key] as any}
-                    className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${agent.accent} text-white transition-opacity hover:opacity-80 cursor-pointer`}
+                    className={`inline-flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl ${agent.accent} text-white transition-opacity hover:opacity-80 cursor-pointer`}
                   >
-                    <Icon size={22} className="text-white" />
+                    <Icon size={20} className="sm:w-[22px] sm:h-[22px] text-white" />
                   </Link>
                 )}
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-slate-500">{card.subtitle}</p>
-                  <h3 className="mt-1 text-2xl font-semibold">{card.title}</h3>
+                  <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500">{card.subtitle}</p>
+                  <h3 className="mt-1 text-xl sm:text-2xl font-semibold">{card.title}</h3>
                 </div>
               </div>
-              <p className="mt-4 text-lg text-slate-600 dark:text-slate-200">{card.content}</p>
-              <p className="mt-2 text-sm text-slate-500">{card.footer}</p>
+              <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-200">{card.content}</p>
+              <p className="mt-2 text-xs sm:text-sm text-slate-500">{card.footer}</p>
             </div>
           );
         })}
       </div>
       
       {/* Time and money saved bubble - placed under all agents */}
-      <div className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-              <div>
-                <p className="text-xs uppercase tracking-widest text-slate-500">Time Saved</p>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+      <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500">Time Saved</p>
+                <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {statsLoading ? "..." : formatTime(timeSaved)}
                 </p>
               </div>
             </div>
-            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-              <div>
-                <p className="text-xs uppercase tracking-widest text-slate-500">Money Saved</p>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <div className="h-6 sm:h-8 w-px bg-slate-200 dark:bg-slate-800" />
+            <div className="flex items-center gap-2 min-w-0">
+              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500">Money Saved</p>
+                <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {statsLoading ? "..." : formatMoney(moneySaved)}
                 </p>
               </div>
             </div>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 text-center sm:text-right">
             Based on all agent activities
           </div>
         </div>

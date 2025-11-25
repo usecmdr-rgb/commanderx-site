@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // If user is on a trial, check if it has expired
     // This ensures expired trials are automatically transitioned
     if (
-      profile.subscription_tier === "trial" ||
+      (profile.subscription_tier === "trial" || profile.subscription_tier === "trial_expired") ||
       profile.subscription_status === "trialing"
     ) {
       const trialExpired = await isTrialExpired(userId);
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     if (!paymentMethod && profile.stripe_customer_id) {
       try {
         const customer = await stripe.customers.retrieve(profile.stripe_customer_id);
-        if (typeof customer !== "string" && customer.invoice_settings?.default_payment_method) {
+        if (typeof customer !== "string" && !customer.deleted && customer.invoice_settings?.default_payment_method) {
           const pmId = customer.invoice_settings.default_payment_method;
           if (typeof pmId === "string") {
             paymentMethod = await stripe.paymentMethods.retrieve(pmId);

@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Modal from "@/components/ui/Modal";
-import { Copy, Check } from "lucide-react";
 
 interface CallForwardingModalProps {
   open: boolean;
@@ -17,103 +15,92 @@ export default function CallForwardingModal({
   alohaPhoneNumber,
   onConfirmSetup,
 }: CallForwardingModalProps) {
-  const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const handleCopyNumber = () => {
-    navigator.clipboard.writeText(alohaPhoneNumber);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleConfirmSetup = async () => {
+  const handleConfirm = async () => {
     try {
-      setSaving(true);
       await onConfirmSetup();
       onClose();
     } catch (error) {
-      console.error("Error confirming forwarding setup:", error);
-    } finally {
-      setSaving(false);
+      console.error("Error confirming forwarding:", error);
     }
   };
 
   return (
     <Modal
-      title="Set up call forwarding to Aloha"
+      title="How to Set Up Call Forwarding"
+      description="Forward missed calls from your phone to Aloha"
       open={open}
       onClose={onClose}
       size="lg"
     >
       <div className="space-y-6">
-        {/* Explanation */}
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            To have Aloha answer missed calls on your existing phone number, you&apos;ll need to enable call forwarding with your mobile carrier so that unanswered or busy calls are forwarded to this Aloha number.
+        <div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            To have Aloha handle your missed calls, enable call forwarding on your phone to this number:
           </p>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Use this number as your forwarding destination:
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <p className="font-mono font-semibold text-lg text-slate-900 dark:text-slate-100">
+              {alohaPhoneNumber}
             </p>
-            <div className="flex items-center gap-2">
-              <code className="text-lg font-mono font-semibold text-slate-900 dark:text-slate-100">
-                {alohaPhoneNumber}
-              </code>
-              <button
-                onClick={handleCopyNumber}
-                className="flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-              >
-                {copied ? (
-                  <>
-                    <Check size={14} />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} />
-                    Copy
-                  </>
-                )}
-              </button>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-semibold mb-3">Instructions by Phone Type:</h3>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium text-sm mb-2">iPhone:</h4>
+              <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+                <li>Open Settings → Phone</li>
+                <li>Tap Call Forwarding</li>
+                <li>Toggle Call Forwarding ON</li>
+                <li>Enter {alohaPhoneNumber}</li>
+                <li>Or use: Forward When Busy / Forward When Unanswered</li>
+              </ol>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-sm mb-2">Android:</h4>
+              <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
+                <li>Open Phone app → Settings (three dots)</li>
+                <li>Tap Calls → Call forwarding</li>
+                <li>Select Forward when unanswered or Forward when busy</li>
+                <li>Enter {alohaPhoneNumber}</li>
+                <li>Tap Enable</li>
+              </ol>
+            </div>
+
+            <div>
+              <h4 className="font-medium text-sm mb-2">Other Phones:</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Look for &quot;Call Forwarding&quot; or &quot;Call Settings&quot; in your phone settings.
+                Enable forwarding for &quot;When Unanswered&quot; or &quot;When Busy&quot; and enter the Aloha number above.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Instructions */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            How to set up call forwarding:
-          </h3>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
-            <li>Open your Phone app.</li>
-            <li>Go to Settings → Call Forwarding or Supplementary Services.</li>
-            <li>Choose &apos;Forward when busy&apos; and/or &apos;Forward when unanswered&apos;.</li>
-            <li>Enter <code className="font-mono text-slate-900 dark:text-slate-100">{alohaPhoneNumber}</code> as the forwarding destination.</li>
-            <li>Save your changes.</li>
-          </ol>
-          <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-            Note: Exact steps vary by carrier and device.
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Note:</strong> Once you&apos;ve set up forwarding on your phone, click &quot;I&apos;ve Set This Up&quot; below.
+            Aloha will then handle calls forwarded to {alohaPhoneNumber}.
           </p>
         </div>
 
-        {/* Footer buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             Close
           </button>
           <button
-            onClick={handleConfirmSetup}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand-accent hover:bg-brand-accent/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleConfirm}
+            className="px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
           >
-            {saving ? "Saving..." : "I've set up forwarding"}
+            I&apos;ve Set This Up
           </button>
         </div>
       </div>
     </Modal>
   );
 }
-

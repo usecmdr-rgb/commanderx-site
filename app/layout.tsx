@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppStateProvider>
             <Header />
             <DataRetentionBanner />
-            <main className="mx-auto min-h-screen max-w-6xl px-4 pb-16 pt-20 sm:px-6 lg:px-8 overflow-x-hidden">
+            <main className="mx-auto min-h-screen max-w-6xl px-4 pb-12 sm:pb-16 pt-16 sm:pt-20 sm:px-6 lg:px-8 overflow-x-hidden">
               {children}
             </main>
             <AuthModal />

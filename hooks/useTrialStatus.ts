@@ -63,9 +63,8 @@ export function useTrialStatus() {
         const trial = data.trial;
 
         const hasUsedTrial = trial?.hasUsedTrial || false;
-        const isTrialExpired = trial?.isExpired || subscription.tier === "trial_expired";
-        const isOnTrial =
-          subscription.status === "trialing" || subscription.tier === "trial";
+        const isTrialExpired = trial?.isExpired || false;
+        const isOnTrial = subscription.status === "trialing";
 
         setTrialStatus({
           hasUsedTrial,

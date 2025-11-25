@@ -1,83 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthFromRequest } from "@/lib/auth-helpers";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
-import { releasePhoneNumber, isTwilioConfigured } from "@/lib/twilioClient";
 
 /**
  * POST /api/telephony/twilio/release-number
  * 
- * Release the user's active Twilio phone number
- * 
- * Behavior:
- * - Finds active number for user
- * - Releases it from Twilio (or simulates in mock mode)
- * - Deactivates it in the database
- * - Resets voicemail and forwarding flags
+ * Release (deactivate) the user's active Twilio phone number
  */
 export async function POST(request: NextRequest) {
   try {
-    // Ensure user is authenticated
     const user = await requireAuthFromRequest(request);
-    const userId = user.id;
-
     const supabase = getSupabaseServerClient();
 
-    // Find active number for user
+    // Find active number
     const { data: activeNumber, error: fetchError } = await supabase
       .from("user_phone_numbers")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .single();
 
     if (fetchError || !activeNumber) {
       return NextResponse.json(
-        { error: "no_active_number", message: "You don't have an active Aloha number." },
+        { error: "No active number found" },
         { status: 404 }
       );
     }
 
-    // Release from Twilio (or simulate in mock mode)
-    if (isTwilioConfigured) {
-      try {
-        await releasePhoneNumber(activeNumber.twilio_phone_sid);
-      } catch (error: any) {
-        // If it's a simulated SID, that's okay in mock mode
-        if (!activeNumber.twilio_phone_sid.startsWith("SIMULATED_SID_")) {
-          console.error("Error releasing Twilio number:", error);
-          throw error;
-        }
-      }
-    }
+    // TODO: Integrate with actual Twilio API
+    // In production, you would:
+    // 1. Call Twilio's IncomingPhoneNumber.delete() API
+    // 2. Release the number from Twilio
 
-    // Update database: deactivate and reset flags
+    // Deactivate the number (trigger will disable voicemail automatically)
     const { error: updateError } = await supabase
       .from("user_phone_numbers")
-      .update({
-        is_active: false,
-        voicemail_enabled: false,
-        forwarding_enabled: false,
-        forwarding_confirmed: false,
-      })
+      .update({ is_active: false })
       .eq("id", activeNumber.id);
 
     if (updateError) {
-      console.error("Error updating phone number:", updateError);
+      console.error("Error releasing number:", updateError);
       return NextResponse.json(
-        { error: "Failed to update phone number", details: updateError.message },
+        { error: "Failed to release number" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
-      status: isTwilioConfigured ? "released" : "released_mock",
+      ok: true,
+      message: "Number released successfully",
     });
   } catch (error: any) {
-    console.error("Error in /api/telephony/twilio/release-number:", error);
+    console.error("Error releasing number:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

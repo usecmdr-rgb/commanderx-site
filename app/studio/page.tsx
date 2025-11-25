@@ -2419,18 +2419,12 @@ export default function StudioPage() {
       
       // Disable in preview mode
       if (isPreview) {
-        setStudioMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "This feature requires an Advanced or Elite subscription. Upgrade to unlock full Studio agent access." },
-        ]);
+        // Preview mode - feature not available
         return;
       }
 
       if (!authToken && process.env.NODE_ENV === "production") {
-        setStudioMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "Authentication error. Please try logging in again." },
-        ]);
+        // Authentication error - return early
         return;
       }
 

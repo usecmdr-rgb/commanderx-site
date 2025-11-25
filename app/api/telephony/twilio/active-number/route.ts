@@ -6,46 +6,35 @@ import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
  * GET /api/telephony/twilio/active-number
  * 
  * Get the user's active Twilio phone number
- * 
- * Returns:
- * - ok: boolean
- * - phoneNumber: UserPhoneNumber | null
  */
 export async function GET(request: NextRequest) {
   try {
-    // Ensure user is authenticated
     const user = await requireAuthFromRequest(request);
-    const userId = user.id;
-
     const supabase = getSupabaseServerClient();
 
-    // Find active number for user
-    const { data: activeNumber, error: fetchError } = await supabase
+    const { data: phoneNumber, error } = await supabase
       .from("user_phone_numbers")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .single();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116 = not found, which is okay
-      console.error("Error fetching active number:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch phone number", details: fetchError.message },
-        { status: 500 }
-      );
+    if (error || !phoneNumber) {
+      return NextResponse.json({
+        ok: true,
+        phoneNumber: null,
+      });
     }
 
     return NextResponse.json({
       ok: true,
-      phoneNumber: activeNumber || null,
+      phoneNumber,
     });
   } catch (error: any) {
-    console.error("Error in /api/telephony/twilio/active-number:", error);
+    console.error("Error fetching active number:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

@@ -60,27 +60,30 @@ export async function POST(request: NextRequest) {
     const userId = user.id;
 
     // First, ensure the columns exist by running the migration SQL
-    await supabase.rpc('exec_sql', {
-      sql: `
-        DO $$ 
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name = 'profiles' AND column_name = 'subscription_tier'
-            ) THEN
-                ALTER TABLE profiles ADD COLUMN subscription_tier TEXT;
-            END IF;
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name = 'profiles' AND column_name = 'subscription_status'
-            ) THEN
-                ALTER TABLE profiles ADD COLUMN subscription_status TEXT;
-            END IF;
-        END $$;
-      `
-    }).catch(() => {
+    try {
+      await supabase.rpc('exec_sql', {
+        sql: `
+          DO $$ 
+          BEGIN
+              IF NOT EXISTS (
+                  SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'profiles' AND column_name = 'subscription_tier'
+              ) THEN
+                  ALTER TABLE profiles ADD COLUMN subscription_tier TEXT;
+              END IF;
+              IF NOT EXISTS (
+                  SELECT 1 FROM information_schema.columns 
+                  WHERE table_name = 'profiles' AND column_name = 'subscription_status'
+              ) THEN
+                  ALTER TABLE profiles ADD COLUMN subscription_status TEXT;
+              END IF;
+          END $$;
+        `
+      });
+    } catch (error) {
       // If RPC doesn't exist, try direct SQL via query
-    });
+      console.warn("RPC exec_sql not available, skipping migration");
+    }
 
     // Update or create profile with subscription tier
     const { error: profileError } = await supabase

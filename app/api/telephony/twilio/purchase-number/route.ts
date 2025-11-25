@@ -1,98 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthFromRequest } from "@/lib/auth-helpers";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
-import { purchasePhoneNumber, isTwilioConfigured } from "@/lib/twilioClient";
 
 /**
  * POST /api/telephony/twilio/purchase-number
  * 
- * Purchase and assign a Twilio phone number to the user
+ * Purchase a Twilio phone number for the user
  * 
  * Body:
- * - phoneNumber (string, required)
- * - country (string, default "US")
- * - areaCode (string, optional)
- * 
- * Behavior:
- * - Deactivates any existing active number for the user
- * - Purchases the number (or simulates in mock mode)
- * - Creates a new user_phone_numbers record
+ * - phoneNumber: string (E.164 format)
+ * - country: string
+ * - areaCode: string (optional)
  */
 export async function POST(request: NextRequest) {
   try {
-    // Ensure user is authenticated
     const user = await requireAuthFromRequest(request);
-    const userId = user.id;
-
+    const supabase = getSupabaseServerClient();
     const body = await request.json();
-    const { phoneNumber, country = "US", areaCode } = body;
+    const { phoneNumber, country, areaCode } = body;
 
-    if (!phoneNumber || typeof phoneNumber !== "string") {
+    if (!phoneNumber) {
       return NextResponse.json(
         { error: "phoneNumber is required" },
         { status: 400 }
       );
     }
 
-    const supabase = getSupabaseServerClient();
+    // TODO: Integrate with actual Twilio API
+    // For now, create a mock record
+    // In production, you would:
+    // 1. Call Twilio's IncomingPhoneNumber.create() API
+    // 2. Get the Phone Number SID
+    // 3. Configure webhook URL
+    // 4. Store in database
 
-    // Deactivate any existing active number for this user
+    // Deactivate any existing active numbers
     await supabase
       .from("user_phone_numbers")
       .update({ is_active: false })
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("is_active", true);
 
-    // TODO: When Twilio is fully configured, optionally release old number via Twilio API
-
-    // Determine voice URL for Twilio webhook
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : "http://localhost:3000";
-    const voiceUrl = `${baseUrl}/api/twilio/voice/incoming`;
-
-    // Purchase the number (or simulate in mock mode)
-    const purchased = await purchasePhoneNumber(phoneNumber, voiceUrl);
-
-    // Extract area code from phone number if not provided
-    let extractedAreaCode = areaCode;
-    if (!extractedAreaCode && phoneNumber.startsWith("+1") && phoneNumber.length === 12) {
-      extractedAreaCode = phoneNumber.substring(2, 5);
-    }
-
-    // Create new user_phone_numbers record
+    // Create new phone number record
     const { data: newNumber, error: insertError } = await supabase
       .from("user_phone_numbers")
       .insert({
-        user_id: userId,
-        twilio_phone_sid: purchased.sid,
-        phone_number: purchased.phoneNumber,
-        country,
-        area_code: extractedAreaCode,
+        user_id: user.id,
+        phone_number: phoneNumber,
+        country: country || "US",
+        area_code: areaCode || null,
+        twilio_phone_sid: `SIMULATED_SID_${Date.now()}`, // Mock SID
         is_active: true,
+        voicemail_enabled: false,
+        voicemail_mode: "none",
+        forwarding_enabled: false,
+        forwarding_confirmed: false,
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error("Error inserting phone number:", insertError);
+      console.error("Error creating phone number:", insertError);
       return NextResponse.json(
-        { error: "Failed to save phone number", details: insertError.message },
+        { error: "Failed to purchase number" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
-      status: isTwilioConfigured ? "purchased" : "mock_purchased",
-      phoneNumber: purchased.phoneNumber,
-      id: newNumber.id,
+      ok: true,
+      phoneNumber: newNumber,
     });
   } catch (error: any) {
-    console.error("Error in /api/telephony/twilio/purchase-number:", error);
+    console.error("Error purchasing number:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

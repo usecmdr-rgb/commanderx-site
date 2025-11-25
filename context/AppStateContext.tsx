@@ -1,0 +1,222 @@
+"use client";
+
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { AlertCategory, AgentKey, BusinessInfo } from "@/types";
+import { defaultAlertCategories, defaultBusinessInfo } from "@/lib/data";
+
+type ThemeMode = "light" | "dark";
+type AuthMode = "login" | "signup";
+export type LanguageCode = "en" | "es" | "fr" | "de" | "it" | "pt" | "nl" | "ja" | "zh" | "ko";
+
+interface AppState {
+  theme: ThemeMode;
+  toggleTheme: () => void;
+  setTheme: (mode: ThemeMode) => void;
+  isMounted: boolean;
+  language: LanguageCode;
+  setLanguage: (lang: LanguageCode) => void;
+  isAuthenticated: boolean;
+  login: () => void;
+  logout: () => void;
+  authModalMode: AuthMode | null;
+  openAuthModal: (mode: AuthMode) => void;
+  closeAuthModal: () => void;
+  showBusinessModal: boolean;
+  setShowBusinessModal: (open: boolean) => void;
+  showBillingModal: boolean;
+  setShowBillingModal: (open: boolean) => void;
+  showSettingsModal: boolean;
+  setShowSettingsModal: (open: boolean) => void;
+  showTermsModal: boolean;
+  setShowTermsModal: (open: boolean) => void;
+  businessInfo: BusinessInfo;
+  updateBusinessInfo: (info: Partial<BusinessInfo>) => void;
+  subscription: Record<AgentKey, boolean>;
+  toggleAgentSubscription: (agent: AgentKey) => void;
+  activeAgentCount: number;
+  alertCategories: AlertCategory[];
+  updateAlertColor: (id: string, color: string) => void;
+}
+
+const AppStateContext = createContext<AppState | undefined>(undefined);
+
+export const AppStateProvider = ({ children }: { children: React.ReactNode }) => {
+  const [theme, setThemeState] = useState<ThemeMode>("light");
+  const [isMounted, setIsMounted] = useState(false);
+  const [language, setLanguageState] = useState<LanguageCode>("en");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<AuthMode | null>(null);
+  const [showBusinessModal, setShowBusinessModal] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(defaultBusinessInfo);
+  const [subscription, setSubscription] = useState<Record<AgentKey, boolean>>({
+    aloha: true,
+    sync: true,
+    studio: false,
+    insight: true,
+  });
+  const [alertCategories, setAlertCategories] = useState<AlertCategory[]>(defaultAlertCategories);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    try {
+      // Load authentication state from localStorage
+      const storedAuth = window.localStorage.getItem("cx-authenticated");
+      if (storedAuth === "true") {
+        setIsAuthenticated(true);
+      }
+
+      const storedTheme = window.localStorage.getItem("cx-theme") as ThemeMode | null;
+      if (storedTheme) {
+        setThemeState(storedTheme);
+      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        setThemeState("dark");
+      }
+
+      const storedLanguage = window.localStorage.getItem("cx-language") as LanguageCode | null;
+      if (storedLanguage) {
+        setLanguageState(storedLanguage);
+      } else {
+        // Try to detect browser language
+        const browserLang = navigator.language.split("-")[0] as LanguageCode;
+        const supportedLanguages: LanguageCode[] = ["en", "es", "fr", "de", "it", "pt", "nl", "ja", "zh", "ko"];
+        if (supportedLanguages.includes(browserLang)) {
+          setLanguageState(browserLang);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading app state:", error);
+    } finally {
+      setIsMounted(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("cx-theme", theme);
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    } catch (error) {
+      console.error("Error saving theme:", error);
+    }
+  }, [theme, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("cx-language", language);
+      document.documentElement.setAttribute("lang", language);
+    } catch (error) {
+      console.error("Error saving language:", error);
+    }
+  }, [language, isMounted]);
+
+  const toggleTheme = () => setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+  const setTheme = (mode: ThemeMode) => setThemeState(mode);
+  const setLanguage = (lang: LanguageCode) => setLanguageState(lang);
+
+  const login = () => {
+    setIsAuthenticated(true);
+    const wasSignup = authModalMode === "signup";
+    setAuthModalMode(null);
+    
+    // Persist authentication state in localStorage
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("cx-authenticated", "true");
+      } catch (error) {
+        console.error("Error saving authentication state:", error);
+      }
+    }
+    
+    // Only show business modal once during signup if it hasn't been shown before
+    if (wasSignup && typeof window !== "undefined") {
+      const hasSeenBusinessModal = window.localStorage.getItem("cx-business-modal-shown");
+      if (!hasSeenBusinessModal) {
+        setShowBusinessModal(true);
+        window.localStorage.setItem("cx-business-modal-shown", "true");
+      }
+    }
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    // Remove authentication state from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem("cx-authenticated");
+      } catch (error) {
+        console.error("Error removing authentication state:", error);
+      }
+    }
+  };
+
+  const openAuthModal = (mode: AuthMode) => {
+    setAuthModalMode(mode);
+  };
+
+  const closeAuthModal = () => setAuthModalMode(null);
+
+  const updateBusinessInfo = (info: Partial<BusinessInfo>) => {
+    setBusinessInfo((prev) => ({ ...prev, ...info }));
+  };
+
+  const toggleAgentSubscription = (agentKey: AgentKey) => {
+    setSubscription((prev) => ({ ...prev, [agentKey]: !prev[agentKey] }));
+  };
+
+  const activeAgentCount = useMemo(
+    () => Object.values(subscription).filter(Boolean).length,
+    [subscription]
+  );
+
+  const updateAlertColor = (id: string, color: string) => {
+    setAlertCategories((prev) =>
+      prev.map((cat) => (cat.id === id ? { ...cat, color } : cat))
+    );
+  };
+
+  const value: AppState = {
+    theme,
+    toggleTheme,
+    setTheme,
+    isMounted,
+    language,
+    setLanguage,
+    isAuthenticated,
+    login,
+    logout,
+    authModalMode,
+    openAuthModal,
+    closeAuthModal,
+    showBusinessModal,
+    setShowBusinessModal,
+    showBillingModal,
+    setShowBillingModal,
+    showSettingsModal,
+    setShowSettingsModal,
+    showTermsModal,
+    setShowTermsModal,
+    businessInfo,
+    updateBusinessInfo,
+    subscription,
+    toggleAgentSubscription,
+    activeAgentCount,
+    alertCategories,
+    updateAlertColor,
+  };
+
+  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
+};
+
+export const useAppState = () => {
+  const ctx = useContext(AppStateContext);
+  if (!ctx) {
+    throw new Error("useAppState must be used within an AppStateProvider");
+  }
+  return ctx;
+};
+

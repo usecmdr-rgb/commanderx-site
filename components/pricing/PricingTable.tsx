@@ -320,7 +320,7 @@ export default function PricingTable() {
         ) : isOnTrial && !trialStatusLoading ? (
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 text-center dark:border-blue-800 dark:bg-blue-900/20 max-w-md">
             <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-              ✨ You're currently on a free trial
+              ✨ You&apos;re currently on a free trial
             </p>
             <p className="mt-1 text-xs text-blue-600 dark:text-blue-500">
               Your trial is active. Choose a plan to continue after it ends.

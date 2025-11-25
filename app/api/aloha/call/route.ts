@@ -129,12 +129,13 @@ export async function POST(request: NextRequest) {
 /**
  * Handle caller interruption
  * 
+ * NOTE: This should be moved to a separate route file:
  * POST /api/aloha/call/interrupt
  * 
  * Body:
  * - callId: string
  */
-export async function handleInterruption(request: NextRequest) {
+async function handleInterruption(request: NextRequest) {
   try {
     const user = await requireAuthFromRequest(request);
     const body = await request.json();

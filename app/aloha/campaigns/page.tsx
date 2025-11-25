@@ -272,7 +272,7 @@ export default function CampaignsPage() {
                   </button>
                 )}
                 <Link
-                  href={`/aloha/campaigns/${campaign.id}`}
+                  href={`/aloha/campaigns/${campaign.id}` as any}
                   className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
                 >
                   View Details
@@ -285,4 +285,3 @@ export default function CampaignsPage() {
     </div>
   );
 }
-

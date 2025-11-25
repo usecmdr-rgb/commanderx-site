@@ -2,48 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 import { requireAuthFromRequest } from "@/lib/auth-helpers";
 import { createErrorResponse } from "@/lib/validation";
-import { isWithinCallWindow, getTimeWindowSummary } from "@/lib/campaign-time-window";
+import { isWithinCallWindow } from "@/lib/campaign-time-window";
 
 /**
  * GET /api/campaigns
  * 
- * Get all call campaigns for the authenticated user
+ * Get all campaigns for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuthFromRequest(request);
     const supabase = getSupabaseServerClient();
 
-    // Get campaigns with target counts
-    const { data: campaigns, error } = await supabase
+    // Get all campaigns for the user
+    const { data: campaigns, error: campaignsError } = await supabase
       .from("call_campaigns")
-      .select(`
-        *,
-        call_campaign_targets(count)
-      `)
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      throw error;
+    if (campaignsError) {
+      throw campaignsError;
     }
 
-    // Calculate progress for each campaign
-    const campaignsWithProgress = await Promise.all(
-      (campaigns || []).map(async (campaign: any) => {
-        // Get target status counts
+    // For each campaign, get progress stats and time window status
+    const campaignsWithStats = await Promise.all(
+      (campaigns || []).map(async (campaign) => {
+        // Get targets for progress calculation
         const { data: targets } = await supabase
           .from("call_campaign_targets")
           .select("status")
           .eq("campaign_id", campaign.id);
 
         const total = targets?.length || 0;
-        const completed =
-          targets?.filter((t) => t.status === "completed").length || 0;
-        const pending =
-          targets?.filter((t) => t.status === "pending").length || 0;
-        const failed =
-          targets?.filter((t) => t.status === "failed").length || 0;
+        const completed = targets?.filter((t) => t.status === "completed").length || 0;
+        const pending = targets?.filter((t) => t.status === "pending").length || 0;
+        const failed = targets?.filter((t) => t.status === "failed").length || 0;
 
         // Check time window status
         const timeWindowCheck = isWithinCallWindow({
@@ -52,6 +46,13 @@ export async function GET(request: NextRequest) {
           allowedCallEndTime: campaign.allowed_call_end_time,
           allowedDaysOfWeek: campaign.allowed_days_of_week || [],
         });
+
+        // Generate time window summary
+        let timeWindowSummary = `${campaign.allowed_call_start_time} - ${campaign.allowed_call_end_time}`;
+        if (campaign.allowed_days_of_week && campaign.allowed_days_of_week.length > 0) {
+          const days = campaign.allowed_days_of_week.join(", ");
+          timeWindowSummary += ` on ${days}`;
+        }
 
         return {
           ...campaign,
@@ -62,18 +63,13 @@ export async function GET(request: NextRequest) {
             failed,
             percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
           },
-          timeWindowSummary: getTimeWindowSummary({
-            timezone: campaign.timezone,
-            allowedCallStartTime: campaign.allowed_call_start_time,
-            allowedCallEndTime: campaign.allowed_call_end_time,
-            allowedDaysOfWeek: campaign.allowed_days_of_week || [],
-          }),
+          timeWindowSummary,
           timeWindowStatus: timeWindowCheck,
         };
       })
     );
 
-    return NextResponse.json({ campaigns: campaignsWithProgress });
+    return NextResponse.json({ campaigns: campaignsWithStats });
   } catch (error: any) {
     if (error.message?.includes("Unauthorized")) {
       return createErrorResponse("Authentication required", 401);
@@ -85,14 +81,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/campaigns
  * 
- * Create a new call campaign
- * 
- * Body:
- * - name, description, type
- * - timezone, allowedCallStartTime, allowedCallEndTime, allowedDaysOfWeek
- * - scriptTemplate (optional)
- * - phoneNumbers (array of phone numbers or newline-separated string)
- * - contactNames (optional array, parallel to phoneNumbers)
+ * Create a new campaign
  */
 export async function POST(request: NextRequest) {
   try {
@@ -102,139 +91,35 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.name || !body.type) {
-      return createErrorResponse("Name and type are required", 400);
-    }
-
-    // Validate purpose if provided
-    if (body.purpose) {
-      const validPurposes = [
-        "lead_generation_sales",
-        "feedback_satisfaction",
-        "appointment_management",
-        "order_project_updates",
-        "administrative_operations",
-        "loyalty_relationship",
-        "urgent_notifications",
-        "custom",
-      ];
-      if (!validPurposes.includes(body.purpose)) {
-        return createErrorResponse(`Invalid purpose. Must be one of: ${validPurposes.join(", ")}`, 400);
-      }
-
-      // Validate purpose_details for required purposes
-      const { getPurposeDefinition } = await import("@/lib/aloha/campaign-purposes");
-      const purposeDef = getPurposeDefinition(body.purpose);
-      if (purposeDef.requiresPurposeDetails && (!body.purposeDetails || !body.purposeDetails.trim())) {
-        return createErrorResponse(
-          `Campaign message is required for ${purposeDef.label} campaigns. Please provide what Aloha should tell these contacts.`,
-          400
-        );
-      }
-    }
-
-    // Validate script_style if provided
-    if (body.scriptStyle) {
-      const validStyles = ["friendly", "professional", "energetic", "calm", "casual"];
-      if (!validStyles.includes(body.scriptStyle)) {
-        return createErrorResponse(`Invalid script_style. Must be one of: ${validStyles.join(", ")}`, 400);
-      }
-    }
-
-    if (!body.phoneNumbers || (Array.isArray(body.phoneNumbers) && body.phoneNumbers.length === 0)) {
-      return createErrorResponse("At least one phone number is required", 400);
-    }
-
-    // Parse phone numbers (can be array or newline-separated string)
-    let phoneNumbers: string[] = [];
-    if (Array.isArray(body.phoneNumbers)) {
-      phoneNumbers = body.phoneNumbers;
-    } else if (typeof body.phoneNumbers === "string") {
-      // Split by newlines or commas
-      phoneNumbers = body.phoneNumbers
-        .split(/[\n,]/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0);
-    }
-
-    if (phoneNumbers.length === 0) {
-      return createErrorResponse("At least one valid phone number is required", 400);
-    }
-
-    // Parse contact names if provided
-    let contactNames: (string | null)[] = [];
-    if (body.contactNames && Array.isArray(body.contactNames)) {
-      contactNames = body.contactNames;
-    } else if (body.contactNames && typeof body.contactNames === "string") {
-      contactNames = body.contactNames
-        .split(/[\n,]/)
-        .map((n) => n.trim() || null);
-    } else {
-      contactNames = new Array(phoneNumbers.length).fill(null);
-    }
-
-    // Ensure contactNames array matches phoneNumbers length
-    while (contactNames.length < phoneNumbers.length) {
-      contactNames.push(null);
+      return createErrorResponse("Campaign name and type are required", 400);
     }
 
     // Create campaign
-    const { data: campaign, error: campaignError } = await supabase
+    const { data: campaign, error: createError } = await supabase
       .from("call_campaigns")
       .insert({
         user_id: user.id,
         name: body.name,
         description: body.description || null,
         type: body.type,
-        status: "draft", // Always start as draft
         purpose: body.purpose || null,
-        purpose_details: body.purposeDetails || null,
-        script_style: body.scriptStyle || null,
-        business_context_required: body.businessContextRequired !== false, // Default true
+        purpose_details: body.purpose_details || null,
+        script_style: body.script_style || null,
+        status: "draft",
         timezone: body.timezone || "America/New_York",
-        allowed_call_start_time: body.allowedCallStartTime || "09:00:00",
-        allowed_call_end_time: body.allowedCallEndTime || "18:00:00",
-        allowed_days_of_week: body.allowedDaysOfWeek || [
-          "mon",
-          "tue",
-          "wed",
-          "thu",
-          "fri",
-        ],
-        script_template: null, // Internal-only, generated from purpose + purpose_details
-        extra_instructions: body.extraInstructions || null,
-        rate_limit_per_minute: body.rateLimitPerMinute || 5,
-        rate_limit_per_hour: body.rateLimitPerHour || 30,
+        allowed_call_start_time: body.allowed_call_start_time || "09:00",
+        allowed_call_end_time: body.allowed_call_end_time || "17:00",
+        allowed_days_of_week: body.allowed_days_of_week || ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        extra_instructions: body.extra_instructions || null,
       })
-      .select("id")
+      .select()
       .single();
 
-    if (campaignError) {
-      throw campaignError;
+    if (createError) {
+      throw createError;
     }
 
-    // Create campaign targets
-    const targets = phoneNumbers.map((phone, idx) => ({
-      campaign_id: campaign.id,
-      phone_number: phone,
-      contact_name: contactNames[idx] || null,
-      status: "pending",
-    }));
-
-    const { error: targetsError } = await supabase
-      .from("call_campaign_targets")
-      .insert(targets);
-
-    if (targetsError) {
-      // Rollback: delete campaign if targets fail
-      await supabase.from("call_campaigns").delete().eq("id", campaign.id);
-      throw targetsError;
-    }
-
-    return NextResponse.json({
-      success: true,
-      campaignId: campaign.id,
-      message: "Campaign created successfully",
-    });
+    return NextResponse.json({ campaign }, { status: 201 });
   } catch (error: any) {
     if (error.message?.includes("Unauthorized")) {
       return createErrorResponse("Authentication required", 401);
@@ -242,4 +127,3 @@ export async function POST(request: NextRequest) {
     return createErrorResponse("Failed to create campaign", 500, error);
   }
 }
-

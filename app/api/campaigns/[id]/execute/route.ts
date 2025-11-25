@@ -17,7 +17,7 @@ import { isValidPurpose, type CampaignPurpose } from "@/lib/aloha/campaign-purpo
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // For now, allow authenticated users to trigger execution
@@ -25,11 +25,14 @@ export async function POST(
     const user = await requireAuthFromRequest(request);
     const supabase = getSupabaseServerClient();
 
+    // Await params (Next.js 15)
+    const { id } = await params;
+
     // Get campaign
     const { data: campaign, error: campaignError } = await supabase
       .from("call_campaigns")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 
@@ -68,7 +71,7 @@ export async function POST(
     const { data: pendingTargets, error: targetsError } = await supabase
       .from("call_campaign_targets")
       .select("*")
-      .eq("campaign_id", params.id)
+      .eq("campaign_id", id)
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .limit(campaign.rate_limit_per_minute || 5); // Respect rate limit
@@ -85,7 +88,7 @@ export async function POST(
           status: "completed",
           completed_at: new Date().toISOString(),
         })
-        .eq("id", params.id);
+        .eq("id", id);
 
       return NextResponse.json({
         success: true,
@@ -124,7 +127,7 @@ export async function POST(
       try {
         const scriptContext: CampaignScriptContext = {
           userId: user.id,
-          campaignId: params.id,
+          campaignId: id,
           purpose: campaign.purpose as CampaignPurpose,
           purposeDetails: campaign.purpose_details || undefined,
           extraInstructions: campaign.extra_instructions || undefined,

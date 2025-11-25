@@ -17,9 +17,10 @@ import { resolveKnowledgeGap } from "@/lib/knowledge-gap-logger";
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: gapId } = await params;
     const user = await requireAuthFromRequest(request);
     const body = await request.json();
     const supabase = getSupabaseServerClient();
@@ -32,7 +33,7 @@ export async function POST(
     const { data: gap, error: gapError } = await supabase
       .from("agent_knowledge_gaps")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", gapId)
       .eq("user_id", user.id)
       .single();
 
@@ -46,7 +47,7 @@ export async function POST(
 
     // Resolve the gap
     await resolveKnowledgeGap(
-      params.id,
+      gapId,
       user.id,
       body.resolutionNotes,
       body.resolutionAction
@@ -69,7 +70,7 @@ export async function POST(
           title: `Resolved: ${gap.requested_info}`,
           content: body.knowledgeChunkContent,
           metadata: {
-            resolved_from_gap_id: params.id,
+            resolved_from_gap_id: gapId,
             resolved_at: new Date().toISOString(),
           },
         });

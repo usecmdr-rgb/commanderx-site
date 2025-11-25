@@ -129,8 +129,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Get user email for trial eligibility check
-    const userEmail = user.email;
+    // Get trial eligibility check (userEmail already declared above)
     const hasUsedTrial = userEmail
       ? await hasEmailUsedTrial(userEmail)
       : profile.has_used_trial || false;

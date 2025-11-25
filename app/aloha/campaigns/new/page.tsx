@@ -277,10 +277,7 @@ export default function NewCampaignPage() {
                   required={getAllPurposes().find((p) => p.id === purpose)?.requiresPurposeDetails || false}
                   rows={5}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg dark:border-slate-700 dark:bg-slate-800"
-                  placeholder={
-                    getAllPurposes().find((p) => p.id === purpose)?.messagePlaceholder ||
-                    "Describe what Aloha should tell these contacts and how it should behave during the calls..."
-                  }
+                  placeholder="Describe what Aloha should tell these contacts and how it should behave during the calls..."
                 />
                 <p className="text-xs text-slate-500 mt-1">
                   {getAllPurposes().find((p) => p.id === purpose)?.requiresPurposeDetails
@@ -324,7 +321,7 @@ export default function NewCampaignPage() {
               <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 p-4">
                 <h3 className="font-semibold mb-2">Behavior Preview</h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 italic">
-                  <strong>Note:</strong> This is a preview of how Aloha will behave. The base script is generated internally from your campaign purpose and message. You cannot edit the base script directly, but you can influence Aloha's behavior with additional instructions above. For the best experience, use the "Test Call" feature after creating the campaign to hear Aloha in action.
+                  <strong>Note:</strong> This is a preview of how Aloha will behave. The base script is generated internally from your campaign purpose and message. You cannot edit the base script directly, but you can influence Aloha&apos;s behavior with additional instructions above. For the best experience, use the &quot;Test Call&quot; feature after creating the campaign to hear Aloha in action.
                 </p>
                 <div className="space-y-3 text-sm">
                   <div>
@@ -493,10 +490,10 @@ export default function NewCampaignPage() {
             }
           />
           <p className="text-xs text-slate-500 mt-2">
-            You can give Aloha extra guidance in natural language. For example: "keep the call very short," "always offer to reschedule," or "be extra apologetic about cancellations." Aloha will follow your instructions on top of its built-in script for this campaign.
+            You can give Aloha extra guidance in natural language. For example: &quot;keep the call very short,&quot; &quot;always offer to reschedule,&quot; or &quot;be extra apologetic about cancellations.&quot; Aloha will follow your instructions on top of its built-in script for this campaign.
           </p>
           <p className="text-xs text-slate-400 mt-1 italic">
-            Note: The base script is automatically generated from your campaign purpose and message. You can't edit it directly, but you can influence Aloha's behavior with these additional instructions.
+            Note: The base script is automatically generated from your campaign purpose and message. You can&apos;t edit it directly, but you can influence Aloha&apos;s behavior with these additional instructions.
           </p>
         </div>
 

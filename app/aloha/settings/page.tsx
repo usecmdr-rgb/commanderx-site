@@ -11,41 +11,73 @@ import {
   type AlohaVoiceProfile,
 } from "@/lib/aloha/voice-profiles";
 import type { AlohaProfile } from "@/types/database";
+import type { UserPhoneNumber } from "@/types/database";
+import CallForwardingModal from "@/components/modals/CallForwardingModal";
+import { Search, Shuffle, X, Check } from "lucide-react";
 
 export default function AlohaSettingsPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<AlohaProfile | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<UserPhoneNumber | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
+  // Voice settings
   const [displayName, setDisplayName] = useState("");
   const [selectedVoiceKey, setSelectedVoiceKey] = useState<AlohaVoiceKey>(DEFAULT_VOICE_KEY);
   const [previewingVoiceKey, setPreviewingVoiceKey] = useState<AlohaVoiceKey | null>(null);
-  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
+
+  // Phone number selection
+  const [country, setCountry] = useState("US");
+  const [areaCode, setAreaCode] = useState("");
+  const [searchingNumbers, setSearchingNumbers] = useState(false);
+  const [availableNumbers, setAvailableNumbers] = useState<Array<{ phoneNumber: string; friendlyName?: string }>>([]);
+  const [randomNumber, setRandomNumber] = useState<string | null>(null);
+  const [purchasingNumber, setPurchasingNumber] = useState<string | null>(null);
+
+  // Voicemail settings
+  const [externalPhoneNumber, setExternalPhoneNumber] = useState("");
+  const [voicemailEnabled, setVoicemailEnabled] = useState(false);
+  const [forwardingEnabled, setForwardingEnabled] = useState(false);
+  const [forwardingConfirmed, setForwardingConfirmed] = useState(false);
+  const [showForwardingModal, setShowForwardingModal] = useState(false);
 
   const voiceProfiles = getAllVoiceProfiles();
 
   useEffect(() => {
-    fetchProfile();
+    fetchData();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/aloha/profile");
-      if (!response.ok) {
-        throw new Error("Failed to fetch Aloha profile");
+      
+      // Fetch Aloha profile
+      const profileResponse = await fetch("/api/aloha/profile");
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        if (profileData.ok && profileData.profile) {
+          setProfile(profileData.profile);
+          setDisplayName(profileData.profile.display_name || "Aloha");
+          setSelectedVoiceKey(
+            (profileData.profile.voice_key as AlohaVoiceKey) || DEFAULT_VOICE_KEY
+          );
+        }
       }
-      const data = await response.json();
-      if (data.ok && data.profile) {
-        setProfile(data.profile);
-        setDisplayName(data.profile.display_name || "Aloha");
-        // Use voice_key if available, otherwise fall back to default
-        setSelectedVoiceKey(
-          (data.profile.voice_key as AlohaVoiceKey) || DEFAULT_VOICE_KEY
-        );
+
+      // Fetch phone number
+      const phoneResponse = await fetch("/api/telephony/twilio/active-number");
+      if (phoneResponse.ok) {
+        const phoneData = await phoneResponse.json();
+        if (phoneData.ok && phoneData.phoneNumber) {
+          setPhoneNumber(phoneData.phoneNumber);
+          setExternalPhoneNumber(phoneData.phoneNumber.external_phone_number || "");
+          setVoicemailEnabled(phoneData.phoneNumber.voicemail_enabled || false);
+          setForwardingEnabled(phoneData.phoneNumber.forwarding_enabled || false);
+          setForwardingConfirmed(phoneData.phoneNumber.forwarding_confirmed || false);
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -54,14 +86,9 @@ export default function AlohaSettingsPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveVoiceSettings = async () => {
     if (!displayName.trim()) {
       setError("Display name cannot be empty");
-      return;
-    }
-
-    if (!selectedVoiceKey) {
-      setError("Please select a voice");
       return;
     }
 
@@ -97,9 +124,165 @@ export default function AlohaSettingsPage() {
     }
   };
 
+  const handleSearchNumbers = async () => {
+    try {
+      setSearchingNumbers(true);
+      setError(null);
+      const response = await fetch(
+        `/api/telephony/twilio/available-numbers?country=${country}${areaCode ? `&areaCode=${areaCode}` : ""}`
+      );
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to search numbers");
+      }
+      
+      setAvailableNumbers(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSearchingNumbers(false);
+    }
+  };
+
+  const handleGetRandomNumber = async () => {
+    try {
+      setError(null);
+      const response = await fetch(
+        `/api/telephony/twilio/random-number?country=${country}${areaCode ? `&areaCode=${areaCode}` : ""}`
+      );
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get random number");
+      }
+      
+      setRandomNumber(data.phoneNumber);
+      setAvailableNumbers([{ phoneNumber: data.phoneNumber, friendlyName: data.friendlyName }]);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handlePurchaseNumber = async (phoneNumberToPurchase: string) => {
+    try {
+      setPurchasingNumber(phoneNumberToPurchase);
+      setError(null);
+      
+      const response = await fetch("/api/telephony/twilio/purchase-number", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: phoneNumberToPurchase,
+          country,
+          areaCode: areaCode || undefined,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to purchase number");
+      }
+      
+      // Refresh phone number data
+      await fetchData();
+      setAvailableNumbers([]);
+      setRandomNumber(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setPurchasingNumber(null);
+    }
+  };
+
+  const handleReleaseNumber = async () => {
+    if (!confirm("Are you sure you want to release your Aloha number? This will disable voicemail and forwarding.")) {
+      return;
+    }
+
+    try {
+      setError(null);
+      const response = await fetch("/api/telephony/twilio/release-number", {
+        method: "POST",
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to release number");
+      }
+      
+      // Refresh phone number data
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSaveVoicemailSettings = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(false);
+
+      const response = await fetch("/api/telephony/voicemail/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          externalPhoneNumber: externalPhoneNumber || undefined,
+          voicemailEnabled,
+          voicemailMode: voicemailEnabled ? "voicemail_only" : "none",
+          forwardingEnabled: voicemailEnabled ? forwardingEnabled : false,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update voicemail settings");
+      }
+
+      if (data.ok) {
+        setForwardingEnabled(data.settings.forwardingEnabled);
+        setForwardingConfirmed(data.settings.forwardingConfirmed);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmForwarding = async () => {
+    try {
+      const response = await fetch("/api/telephony/voicemail/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          forwardingConfirmed: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to confirm forwarding");
+      }
+
+      if (data.ok) {
+        setForwardingConfirmed(true);
+      }
+    } catch (err: any) {
+      console.error("Error confirming forwarding:", err);
+      throw err;
+    }
+  };
+
   const handlePreviewVoice = async (voiceKey: AlohaVoiceKey) => {
     setPreviewingVoiceKey(voiceKey);
-    setPreviewAudioUrl(null);
 
     try {
       const response = await fetch("/api/aloha/voice-preview", {
@@ -114,18 +297,15 @@ export default function AlohaSettingsPage() {
 
       const data = await response.json();
       if (data.ok && data.audioUrl) {
-        // Play the audio preview
         const audio = new Audio(data.audioUrl);
         audio.play();
 
         audio.onended = () => {
           setPreviewingVoiceKey(null);
-          setPreviewAudioUrl(null);
         };
 
         audio.onerror = () => {
           setPreviewingVoiceKey(null);
-          setPreviewAudioUrl(null);
           setError("Failed to play voice preview");
         };
       }
@@ -145,7 +325,7 @@ export default function AlohaSettingsPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-4xl mx-auto p-6">
       <header>
         <button
           onClick={() => router.back()}
@@ -154,9 +334,9 @@ export default function AlohaSettingsPage() {
           ← Back
         </button>
         <p className="text-sm uppercase tracking-widest text-slate-500">Aloha Agent</p>
-        <h1 className="text-3xl font-semibold">Personalization Settings</h1>
+        <h1 className="text-3xl font-semibold">Settings</h1>
         <p className="text-slate-600 dark:text-slate-400 mt-2">
-          Customize how Aloha introduces itself and sounds during calls
+          Configure your Aloha phone agent, voice, and voicemail settings
         </p>
       </header>
 
@@ -173,6 +353,215 @@ export default function AlohaSettingsPage() {
       )}
 
       <div className="space-y-6">
+        {/* Phone Number Selection Section */}
+        <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+          <h2 className="text-xl font-semibold mb-4">Phone Number</h2>
+          
+          {phoneNumber ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Your active Aloha number:</p>
+                  <p className="text-lg font-mono font-semibold text-slate-900 dark:text-slate-100 mt-1">
+                    {phoneNumber.phone_number}
+                  </p>
+                </div>
+                <button
+                  onClick={handleReleaseNumber}
+                  className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                >
+                  Release Number
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                Choose a phone number for Aloha to use. You can search by area code or get a random number.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Country
+                  </label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-transparent dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Area Code (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={areaCode}
+                    onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                    placeholder="e.g., 415"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-transparent dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSearchNumbers}
+                  disabled={searchingNumbers}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50"
+                >
+                  <Search size={16} />
+                  {searchingNumbers ? "Searching..." : "Search Numbers"}
+                </button>
+                <button
+                  onClick={handleGetRandomNumber}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                  <Shuffle size={16} />
+                  Random Number
+                </button>
+              </div>
+
+              {availableNumbers.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Available Numbers:</p>
+                  <div className="space-y-2">
+                    {availableNumbers.map((num) => (
+                      <div
+                        key={num.phoneNumber}
+                        className="flex items-center justify-between p-3 border border-slate-200 rounded-lg dark:border-slate-700"
+                      >
+                        <div>
+                          <p className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                            {num.phoneNumber}
+                          </p>
+                          {num.friendlyName && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{num.friendlyName}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handlePurchaseNumber(num.phoneNumber)}
+                          disabled={purchasingNumber === num.phoneNumber}
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-brand-accent rounded-lg hover:bg-brand-accent/90 disabled:opacity-50"
+                        >
+                          {purchasingNumber === num.phoneNumber ? "Purchasing..." : "Use this number"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Aloha as Voicemail Section */}
+        <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+          <h2 className="text-xl font-semibold mb-4">Aloha as Voicemail</h2>
+          
+          {!phoneNumber ? (
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                You need to choose an Aloha number before enabling voicemail.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Your Phone Number (for call forwarding)
+                </label>
+                <input
+                  type="tel"
+                  value={externalPhoneNumber}
+                  onChange={(e) => setExternalPhoneNumber(e.target.value)}
+                  placeholder="+1 (555) 123-4567"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-transparent dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Your real phone number that will forward calls to Aloha
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="voicemail-enabled"
+                  checked={voicemailEnabled}
+                  onChange={(e) => {
+                    setVoicemailEnabled(e.target.checked);
+                    if (!e.target.checked) {
+                      setForwardingEnabled(false);
+                    }
+                  }}
+                  className="mt-1 h-5 w-5 rounded border-slate-300 text-brand-accent focus:ring-brand-accent"
+                />
+                <label htmlFor="voicemail-enabled" className="flex-1">
+                  <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Enable Aloha as my voicemail
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Aloha will answer missed calls and collect messages
+                  </span>
+                </label>
+              </div>
+
+              {voicemailEnabled && (
+                <div className="space-y-4 pl-8 border-l-2 border-slate-200 dark:border-slate-700">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="forwarding-enabled"
+                      checked={forwardingEnabled}
+                      onChange={(e) => setForwardingEnabled(e.target.checked)}
+                      className="mt-1 h-5 w-5 rounded border-slate-300 text-brand-accent focus:ring-brand-accent"
+                    />
+                    <label htmlFor="forwarding-enabled" className="flex-1">
+                      <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        I&apos;ll use call forwarding from my phone to send missed calls to Aloha
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowForwardingModal(true)}
+                      className="text-sm text-brand-accent hover:underline"
+                    >
+                      How do I set this up?
+                    </button>
+                  </div>
+
+                  <div className="text-sm">
+                    {forwardingConfirmed ? (
+                      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                        <Check size={16} />
+                        <span>Forwarding marked as set up.</span>
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Forwarding not yet confirmed.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveVoicemailSettings}
+                disabled={saving || !voicemailEnabled || !externalPhoneNumber.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-brand-accent rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Saving..." : "Save Voicemail Settings"}
+              </button>
+            </div>
+          )}
+        </section>
+
         {/* Agent Name Section */}
         <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
           <h2 className="text-xl font-semibold mb-4">Agent Name</h2>
@@ -194,9 +583,6 @@ export default function AlohaSettingsPage() {
             <p className="text-xs text-slate-500">
               Example: &quot;Sarah&quot;, &quot;Alex&quot;, &quot;Reception&quot;, or &quot;Sarah from [Your Business Name]&quot;
             </p>
-            <p className="text-xs text-slate-500 mt-2">
-              This name will be used in call introductions, e.g., &quot;Hi, this is {displayName || "Aloha"} from [BusinessName]. How can I help you today?&quot;
-            </p>
           </div>
         </section>
 
@@ -205,7 +591,7 @@ export default function AlohaSettingsPage() {
           <h2 className="text-xl font-semibold mb-4">Voice Selection</h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
             Choose how Aloha sounds during calls. Each voice has a distinct style and personality.
-            Aloha's behavior and personality stay the same; only the voice changes.
+            Aloha&apos;s behavior and personality stay the same; only the voice changes.
           </p>
           
           <div className="grid gap-4 md:grid-cols-2">
@@ -222,148 +608,6 @@ export default function AlohaSettingsPage() {
           </div>
         </section>
 
-        {/* Conversation Intelligence Section */}
-        <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
-          <h2 className="text-xl font-semibold mb-4">Conversation Intelligence</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-            Advanced conversation capabilities for more natural, context-aware interactions.
-          </p>
-          
-          <div className="space-y-6">
-            {/* Intent Classification */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">Intent Classification</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Automatically classify caller utterances (questions, statements, emotions, call flow intent)
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Question types: pricing, availability, services, appointments</li>
-                <li>• Statement types: complaint, praise, confusion</li>
-                <li>• Emotional states: angry, upset, stressed, neutral, happy</li>
-                <li>• Call flow: wants callback, wants email, wants unsubscribe</li>
-              </ul>
-            </div>
-
-            {/* Voice Dynamics */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">Natural Voice Dynamics</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Human-like voice shaping with micro pauses, disfluencies, and emotion-aware adjustments
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Micro pauses between clauses</li>
-                <li>• Natural disfluencies (sparingly): "okay," "so," "let me see"</li>
-                <li>• Softening phrases: "I can help with that," "no worries"</li>
-                <li>• Emotion-aware adjustments based on caller state</li>
-              </ul>
-            </div>
-
-            {/* Emotional Intelligence */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">Emotional Intelligence</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Empathetic response shaping based on detected emotional state
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Upset callers → gentle tone + acknowledgement</li>
-                <li>• Angry callers → de-escalation + neutral clarity</li>
-                <li>• Stressed callers → slow pace + reassurance</li>
-                <li>• Confused callers → more explicit guidance</li>
-              </ul>
-            </div>
-
-            {/* Communication Resilience */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">Communication Resilience</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Handle connection issues, silence, and talkative callers gracefully
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Bad connection detection and fallback</li>
-                <li>• Silence handling (2s, 6s, 10s check-ins)</li>
-                <li>• Talkative caller management</li>
-                <li>• Automatic graceful recovery</li>
-              </ul>
-            </div>
-
-            {/* Contact Memory */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">Contact Memory</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Remember basic info about callers for personalized conversations
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Per-phone-number memory (name, notes, outcomes)</li>
-                <li>• Do-not-call flag enforcement</li>
-                <li>• Natural greeting adjustments</li>
-                <li>• Privacy-conscious storage</li>
-              </ul>
-              <Link
-                href="/aloha/contacts"
-                className="mt-3 inline-block text-sm text-brand-accent hover:underline"
-              >
-                Manage contacts →
-              </Link>
-            </div>
-
-            {/* End-of-Call Intelligence */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold mb-1">End-of-Call Intelligence</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Graceful call endings with exit intent detection
-                  </p>
-                </div>
-                <div className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Enabled
-                </div>
-              </div>
-              <ul className="text-xs text-slate-500 space-y-1 mt-2">
-                <li>• Detect exit intent (explicit or implied)</li>
-                <li>• Check for additional needs before closing</li>
-                <li>• Context-aware closing messages</li>
-                <li>• Respectful ending for all scenarios</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
         {/* Save Button */}
         <div className="flex items-center justify-end gap-4">
           <button
@@ -373,7 +617,7 @@ export default function AlohaSettingsPage() {
             Cancel
           </button>
           <button
-            onClick={handleSave}
+            onClick={handleSaveVoiceSettings}
             disabled={saving || !displayName.trim() || !selectedVoiceKey}
             className="px-6 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
@@ -381,6 +625,16 @@ export default function AlohaSettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Call Forwarding Modal */}
+      {phoneNumber && (
+        <CallForwardingModal
+          open={showForwardingModal}
+          onClose={() => setShowForwardingModal(false)}
+          alohaPhoneNumber={phoneNumber.phone_number}
+          onConfirmSetup={handleConfirmForwarding}
+        />
+      )}
     </div>
   );
 }
@@ -418,19 +672,13 @@ function VoiceProfileCard({
         </div>
         {isSelected && (
           <div className="ml-2 w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <Check className="w-3 h-3 text-white" />
           </div>
         )}
       </div>
       <div className="flex items-center gap-2 mt-3">
         <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-          {voiceProfile.gender === "female" ? "♀" : "♂"} {voiceProfile.accent} • {voiceProfile.tonePreset}
+          {voiceProfile.tonePreset}
         </span>
         <button
           onClick={(e) => {

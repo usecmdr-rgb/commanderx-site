@@ -11,16 +11,17 @@ import { isWithinCallWindow } from "@/lib/campaign-time-window";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await requireAuthFromRequest(request);
     const supabase = getSupabaseServerClient();
 
     const { data: campaign, error: campaignError } = await supabase
       .from("call_campaigns")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 
@@ -32,7 +33,7 @@ export async function GET(
     const { data: targets, error: targetsError } = await supabase
       .from("call_campaign_targets")
       .select("*")
-      .eq("campaign_id", params.id)
+      .eq("campaign_id", id)
       .order("created_at", { ascending: true });
 
     if (targetsError) {
@@ -92,9 +93,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await requireAuthFromRequest(request);
     const body = await request.json();
     const supabase = getSupabaseServerClient();
@@ -103,7 +105,7 @@ export async function PATCH(
     const { data: existingCampaign, error: fetchError } = await supabase
       .from("call_campaigns")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 
@@ -164,7 +166,7 @@ export async function PATCH(
           started_at: new Date().toISOString(),
           paused_at: null,
         })
-        .eq("id", params.id);
+        .eq("id", id);
 
       if (updateError) {
         throw updateError;
@@ -188,7 +190,7 @@ export async function PATCH(
           status: "paused",
           paused_at: new Date().toISOString(),
         })
-        .eq("id", params.id);
+        .eq("id", id);
 
       if (updateError) {
         throw updateError;
@@ -232,7 +234,7 @@ export async function PATCH(
           status: "running",
           paused_at: null,
         })
-        .eq("id", params.id);
+        .eq("id", id);
 
       if (updateError) {
         throw updateError;
@@ -253,7 +255,7 @@ export async function PATCH(
         .update({
           status: "canceled",
         })
-        .eq("id", params.id);
+        .eq("id", id);
 
       if (updateError) {
         throw updateError;
@@ -288,7 +290,7 @@ export async function PATCH(
       const { error: updateError } = await supabase
         .from("call_campaigns")
         .update(updateData)
-        .eq("id", params.id);
+        .eq("id", id);
 
       if (updateError) {
         throw updateError;
@@ -316,9 +318,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await requireAuthFromRequest(request);
     const supabase = getSupabaseServerClient();
 
@@ -326,7 +329,7 @@ export async function DELETE(
     const { data: existingCampaign, error: fetchError } = await supabase
       .from("call_campaigns")
       .select("status")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 
@@ -346,7 +349,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from("call_campaigns")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (deleteError) {
       throw deleteError;

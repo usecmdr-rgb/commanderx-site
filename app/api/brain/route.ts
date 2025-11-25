@@ -9,6 +9,7 @@ import { getBusinessContext } from "@/lib/business-context";
 import { logKnowledgeGap } from "@/lib/knowledge-gap-logger";
 import { getAlohaDisplayName } from "@/lib/aloha/profile";
 import type { AgentKey, TaskType } from "@/lib/agents/config";
+import type { ScenarioContext } from "@/lib/aloha/scenario-detection";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionContentPart,
@@ -721,40 +722,33 @@ export async function POST(req: Request) {
         // Add scenario-aware instructions if call context is provided
         if (callContext && typeof callContext === "object") {
           try {
-            const { generateScenarioInstructions } = await import("@/lib/aloha/scenario-handler");
-            const { detectScenarios, type CallContext as CallContextType } = await import("@/lib/aloha/scenario-detection");
+            const { enhancePromptWithScenario } = await import("@/lib/aloha/scenario-handler");
+            const { detectScenario } = await import("@/lib/aloha/scenario-detection");
+            const transcript = ""; // Empty transcript for initial scenario detection
             
-            const scenarioContext: CallContextType = {
+            const scenarioContext: ScenarioContext = {
               sttConfidence: callContext.sttConfidence,
               audioQuality: callContext.audioQuality,
               hasEcho: callContext.hasEcho,
               hasBackgroundNoise: callContext.hasBackgroundNoise,
               isVoicemail: callContext.isVoicemail,
-              callLag: callContext.callLag,
-              interruptions: callContext.interruptions,
+              callLatency: callContext.callLag,
+              interruptionCount: callContext.interruptions || callContext.bargeIns,
               silenceDuration: callContext.silenceDuration,
-              speakingRate: callContext.speakingRate,
+              speechRate: callContext.speakingRate,
               topicSwitches: callContext.topicSwitches,
-              bargeIns: callContext.bargeIns,
-              emotionalTone: callContext.emotionalTone,
-              keywords: callContext.keywords,
-              callerIdentified: callContext.callerIdentified,
-              isChild: callContext.isChild,
+              emotionalKeywords: callContext.keywords || (callContext.emotionalTone ? [callContext.emotionalTone] : undefined),
+              toneIndicators: callContext.emotionalTone ? [callContext.emotionalTone] : undefined,
+              callerVerification: callContext.callerIdentified,
               requestedService: callContext.requestedService,
               requestedInfo: callContext.requestedInfo,
-              wantsOptOut: callContext.wantsOptOut,
-              mentionsLegal: callContext.mentionsLegal,
-              mentionsEmergency: callContext.mentionsEmergency,
-              transcript: callContext.transcript,
-              lastUserMessage: message,
             };
 
-            const scenarios = detectScenarios(scenarioContext);
-            if (scenarios.length > 0) {
-              const scenarioInstructions = generateScenarioInstructions(scenarios);
-              if (scenarioInstructions) {
-                systemPrompt += `\n\n[CURRENT CALL SCENARIOS]\n${scenarioInstructions}\n\nAdjust your responses based on these scenarios. Use the provided response snippets when appropriate.`;
-              }
+            const scenario = detectScenario(scenarioContext, transcript);
+            
+            if (scenario && scenario.category !== "normal") {
+              // Enhance prompt with scenario context
+              systemPrompt = enhancePromptWithScenario(systemPrompt, scenario);
             }
           } catch (error) {
             console.error("Error generating scenario instructions:", error);
@@ -1134,62 +1128,31 @@ export async function POST(req: Request) {
       // Handle scenarios and update call notes if needed
       if (callContext && typeof callContext === "object") {
         try {
-          const { handleScenarios } = await import("@/lib/aloha/scenario-handler");
-          const { detectScenarios, type CallContext as CallContextType } = await import("@/lib/aloha/scenario-detection");
+          const { handleScenario } = await import("@/lib/aloha/scenario-handler");
           
-          const scenarioContext: CallContextType = {
+          // Note: Scenario handling is done during the conversation, not after
+          // This section can be removed or simplified if not needed
+          // Keeping minimal scenario context for potential future use
+          const scenarioContext: ScenarioContext = {
             sttConfidence: callContext.sttConfidence,
             audioQuality: callContext.audioQuality,
             hasEcho: callContext.hasEcho,
             hasBackgroundNoise: callContext.hasBackgroundNoise,
             isVoicemail: callContext.isVoicemail,
-            callLag: callContext.callLag,
-            interruptions: callContext.interruptions,
+            callLatency: callContext.callLag,
+            interruptionCount: callContext.interruptions || callContext.bargeIns,
             silenceDuration: callContext.silenceDuration,
-            speakingRate: callContext.speakingRate,
+            speechRate: callContext.speakingRate,
             topicSwitches: callContext.topicSwitches,
-            bargeIns: callContext.bargeIns,
-            emotionalTone: callContext.emotionalTone,
-            keywords: callContext.keywords,
-            callerIdentified: callContext.callerIdentified,
-            isChild: callContext.isChild,
+            emotionalKeywords: callContext.keywords || (callContext.emotionalTone ? [callContext.emotionalTone] : undefined),
+            toneIndicators: callContext.emotionalTone ? [callContext.emotionalTone] : undefined,
+            callerVerification: callContext.callerIdentified,
             requestedService: callContext.requestedService,
             requestedInfo: callContext.requestedInfo,
-            wantsOptOut: callContext.wantsOptOut,
-            mentionsLegal: callContext.mentionsLegal,
-            mentionsEmergency: callContext.mentionsEmergency,
-            transcript: callContext.transcript,
-            lastUserMessage: message,
           };
 
-          const scenarioResponse = await handleScenarios(
-            scenarioContext,
-            businessContext,
-            userId,
-            callContext.callId || callContext.id
-          );
-
-          // Update call notes if scenario handler provided notes
-          // This would be done after call is created in the calls table
-          if (scenarioResponse.updateCallNotes) {
-            // Store in metadata for later use when call record is created
-            metadata = { ...metadata, scenarioNotes: scenarioResponse.updateCallNotes };
-          }
-
-          // Handle opt-out if needed
-          if (scenarioResponse.shouldOptOut) {
-            // Mark caller as opted out
-            // Update contact profile with do-not-call flag
-            if (callContext?.phoneNumber) {
-              try {
-                const { setDoNotCall } = await import("@/lib/aloha/contact-memory");
-                await setDoNotCall(userId, callContext.phoneNumber, true);
-              } catch (error) {
-                console.error("Error setting do-not-call flag:", error);
-              }
-            }
-            metadata = { ...metadata, shouldOptOut: "true" };
-          }
+          // Scenario handling is integrated into the conversation flow
+          // This section is kept for reference but scenario detection happens in real-time
         } catch (error) {
           console.error("Error handling scenarios:", error);
           // Don't fail the request if scenario handling fails

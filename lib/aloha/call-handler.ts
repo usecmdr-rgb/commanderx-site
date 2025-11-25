@@ -18,7 +18,7 @@ import { enhanceConversation } from "./conversation";
 import { generateSpeech, streamSpeech } from "./tts";
 import { generateResponse, type ConversationContext } from "./response-generator";
 import { ConversationLayersProcessor, type CallerInput, type LayerProcessingOptions } from "./conversation-layers";
-import type { AlohaVoice } from "./voices";
+// Voice type is handled via voice profiles
 
 /**
  * Call handler options

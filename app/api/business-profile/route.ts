@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Check if profile exists
     const { data: existingProfile } = await supabase
       .from("business_profiles")
-      .select("id")
+      .select("id, primary_website_url")
       .eq("user_id", user.id)
       .single();
 

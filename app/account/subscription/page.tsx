@@ -200,9 +200,9 @@ export default function SubscriptionPage() {
     });
   };
 
-  const getTierDisplayName = (tier: SubscriptionTier) => {
+  const getTierDisplayName = (tier: SubscriptionTier | undefined | null) => {
     if (!tier) return "Free";
-    return TIER_NAMES[tier] || tier;
+    return TIER_NAMES[tier as TierId] || tier;
   };
 
   const currentTier = subscriptionData?.subscription.tier;
@@ -438,7 +438,7 @@ export default function SubscriptionPage() {
               <strong>What happens when you cancel:</strong>
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700 dark:text-amber-300">
-              <li>You'll continue to have access until the end of your current billing period</li>
+              <li>You&apos;ll continue to have access until the end of your current billing period</li>
               <li>Your subscription will not renew automatically</li>
               <li>You can reactivate your subscription at any time before the period ends</li>
             </ul>

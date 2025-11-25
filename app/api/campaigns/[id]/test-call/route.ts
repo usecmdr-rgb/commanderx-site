@@ -19,12 +19,12 @@ import { createAlohaCallHandler } from "@/lib/aloha/call-handler";
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: campaignId } = await params;
     const user = await requireAuthFromRequest(request);
     const supabase = getSupabaseServerClient();
-    const campaignId = params.id;
 
     const body = await request.json();
     const { phoneNumber } = body;

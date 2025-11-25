@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update in Supabase (preserves all user data)
-    const updated = await updateSubscriptionTier(userId, tier, stripeSubscriptionId);
+    const updated = await updateSubscriptionTier(userId, tier, stripeSubscriptionId || null);
 
     return NextResponse.json({
       success: true,

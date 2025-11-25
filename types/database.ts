@@ -221,3 +221,35 @@ export type ContactProfileUpdate = Partial<Omit<ContactProfile, "id" | "user_id"
   updated_at?: string;
 };
 
+/**
+ * User phone numbers table (Twilio integration)
+ */
+export interface UserPhoneNumber {
+  id: string; // UUID
+  user_id: string; // UUID, references auth.users.id
+  twilio_phone_sid: string; // Twilio IncomingPhoneNumber SID (or "SIMULATED_SID_*" in mock mode)
+  phone_number: string; // Twilio number in E.164 format
+  country: string;
+  area_code: string | null;
+  is_active: boolean; // Only ONE active per user
+  voicemail_enabled: boolean;
+  voicemail_mode: "none" | "voicemail_only" | "receptionist";
+  external_phone_number: string | null; // User's real SIM/carrier number
+  forwarding_enabled: boolean;
+  forwarding_confirmed: boolean;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/**
+ * Database insert types for user phone numbers
+ */
+export type UserPhoneNumberInsert = Omit<UserPhoneNumber, "id" | "created_at" | "updated_at">;
+
+/**
+ * Database update types for user phone numbers
+ */
+export type UserPhoneNumberUpdate = Partial<Omit<UserPhoneNumber, "id" | "user_id" | "created_at">> & {
+  updated_at?: string;
+};
+

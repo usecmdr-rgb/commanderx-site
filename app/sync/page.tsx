@@ -92,6 +92,7 @@ const SyncPage = () => {
     if (activeTab === "email") {
       checkGmailConnection();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   useEffect(() => {
@@ -165,6 +166,7 @@ const SyncPage = () => {
       alert(errorMessage);
       window.history.replaceState({}, "", "/sync");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Calendar connection and loading
@@ -178,6 +180,7 @@ const SyncPage = () => {
     if (isCalendarConnected && activeTab === "calendar") {
       loadCalendarEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCalendarConnected, selectedDate, activeTab]);
 
   // Gmail functions

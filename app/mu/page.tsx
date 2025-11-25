@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState, useRef } from "react";
@@ -342,12 +343,6 @@ const ColorPicker = ({
           </div>
         </div>
       )}
-      <MuShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        assetUrl={muImagePreviewUrl}
-        assetName={selectedMediaName}
-      />
     </div>
   );
 };
@@ -1052,7 +1047,7 @@ export default function StudioPage() {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, draggingTextItemId]);
+  }, [isDragging, draggingTextItemId, updateTextItem]);
 
   const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1383,6 +1378,7 @@ export default function StudioPage() {
       {/* Tab Content */}
       <div className="mu-content">
         {activeTab === "edit" && (
+          <>
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-sm shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40">
@@ -2139,6 +2135,7 @@ export default function StudioPage() {
             </div>
           </div>
         </div>
+        </>
         )}
         {activeTab === "analytics" && <MuAnalyticsPanel />}
       </div>
@@ -2193,9 +2190,7 @@ export default function StudioPage() {
             </button>
           </div>
         </div>
-        )}
-        {activeTab === "analytics" && <MuAnalyticsPanel />}
-      </div>
+      )}
       <MuShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}

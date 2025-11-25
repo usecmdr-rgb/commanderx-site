@@ -46,6 +46,7 @@ const CalendarPage = () => {
     if (isCalendarConnected) {
       loadCalendarEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCalendarConnected, selectedDate]);
 
   const checkCalendarConnection = async () => {

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState, useRef } from "react";
@@ -411,7 +412,7 @@ const ColorPicker = ({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDraggingWheel, lightness]);
+  }, [isDraggingWheel, lightness, updateColor]);
 
   // Handle slider drag
   useEffect(() => {
@@ -437,7 +438,7 @@ const ColorPicker = ({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDraggingSlider, hue, saturation]);
+  }, [isDraggingSlider, hue, saturation, updateColor]);
 
   useEffect(() => {
     if (!wheelRef.current || !isOpen) return;
@@ -508,7 +509,7 @@ const ColorPicker = ({
     ctx.beginPath();
     ctx.arc(currentX, currentY, 8 * scale, 0, 2 * Math.PI);
     ctx.stroke();
-  }, [hue, saturation, lightness, isOpen]);
+  }, [hue, saturation, lightness, isOpen, hslToHex]);
 
   const handleWheelMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();

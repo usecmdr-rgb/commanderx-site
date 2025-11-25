@@ -71,9 +71,6 @@ export async function POST(request: NextRequest) {
         // Fetch full subscription details from Stripe
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-        // Check if this is a trial conversion
-        const isTrialConversion = session.metadata?.is_trial_conversion === "true";
-
         // Update or create subscription record (subscriptions table is source of truth)
         const subscriptionData: any = {
           user_id: userId,
@@ -116,6 +113,14 @@ export async function POST(request: NextRequest) {
           console.error("Error upserting subscription:", subError);
         }
 
+        // Clear retention window since user is upgrading/reactivating
+        const { error: clearError } = await supabase.rpc("clear_retention_on_reactivation", {
+          user_id_param: userId,
+        });
+        if (clearError) {
+          console.error("Error clearing retention on upgrade:", clearError);
+        }
+
         // Also update profiles table for backward compatibility
         // The trigger should handle this, but we do it explicitly for safety
         const { error: profileError } = await supabase
@@ -153,10 +158,21 @@ export async function POST(request: NextRequest) {
         }
 
         const tier = (subscription.metadata?.tier as "basic" | "advanced" | "elite" | undefined) || "free";
-        const status = subscription.status as "active" | "trialing" | "canceled" | "past_due" | "incomplete" | "incomplete_expired" | "unpaid";
+        const status = subscription.status as "active" | "trialing" | "canceled" | "paused" | "past_due" | "incomplete" | "incomplete_expired" | "unpaid";
+
+        // Get current subscription to check if this is a cancellation/reactivation
+        const { data: currentSub } = await supabase
+          .from("subscriptions")
+          .select("tier, status, stripe_subscription_id")
+          .eq("user_id", profile.id)
+          .single();
+
+        const wasPaid = currentSub?.tier && ["basic", "advanced", "elite"].includes(currentSub.tier);
+        const isNowCanceled = status === "canceled" || status === "paused";
+        const isNowActive = status === "active" || status === "trialing";
 
         // Update subscriptions table (source of truth)
-        const subscriptionData = {
+        const subscriptionData: any = {
           tier,
           status,
           stripe_subscription_id: subscription.id,
@@ -185,6 +201,26 @@ export async function POST(request: NextRequest) {
 
         if (subError) {
           console.error("Error updating subscription:", subError);
+        }
+
+        // Set 60-day retention window if paid user canceled/paused
+        if (wasPaid && isNowCanceled) {
+          const { error: retentionError } = await supabase.rpc("set_paid_cancellation_retention", {
+            user_id_param: profile.id,
+          });
+          if (retentionError) {
+            console.error("Error setting paid cancellation retention:", retentionError);
+          }
+        }
+
+        // Clear retention window if user reactivated
+        if (wasPaid && isNowActive && currentSub?.tier && ["basic", "advanced", "elite"].includes(currentSub.tier)) {
+          const { error: clearError } = await supabase.rpc("clear_retention_on_reactivation", {
+            user_id_param: profile.id,
+          });
+          if (clearError) {
+            console.error("Error clearing retention on reactivation:", clearError);
+          }
         }
 
         // Update profiles table for backward compatibility
@@ -224,6 +260,15 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // Get current subscription to check if this is a reactivation
+        const { data: currentSub } = await supabase
+          .from("subscriptions")
+          .select("tier, status")
+          .eq("user_id", profile.id)
+          .single();
+
+        const isReactivation = currentSub?.status && ["canceled", "paused", "past_due"].includes(currentSub.status);
+
         // Update subscriptions table
         const { error: subError } = await supabase
           .from("subscriptions")
@@ -235,6 +280,16 @@ export async function POST(request: NextRequest) {
 
         if (subError) {
           console.error("Error updating subscription status:", subError);
+        }
+
+        // Clear retention window if user reactivated
+        if (isReactivation) {
+          const { error: clearError } = await supabase.rpc("clear_retention_on_reactivation", {
+            user_id_param: profile.id,
+          });
+          if (clearError) {
+            console.error("Error clearing retention on reactivation:", clearError);
+          }
         }
 
         // Update profiles table for backward compatibility

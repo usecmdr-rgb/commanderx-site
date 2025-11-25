@@ -3,16 +3,20 @@
  * These types match the database schema defined in migrations
  */
 
-export type SubscriptionTier = "free" | "trial" | "trial_expired" | "basic" | "advanced" | "elite";
+export type SubscriptionTier = "free" | "trial" | "trial_expired" | "data_cleared" | "basic" | "advanced" | "elite";
 export type SubscriptionStatus = 
   | "active" 
   | "trialing" 
   | "expired"
-  | "canceled" 
+  | "canceled"
+  | "paused"
   | "past_due" 
   | "incomplete" 
   | "incomplete_expired" 
-  | "unpaid";
+  | "unpaid"
+  | "inactive";
+
+export type DataRetentionReason = "trial_expired" | "paid_canceled" | "paid_paused" | null;
 
 export type AgentType = "aloha" | "studio" | "sync" | "insight";
 export type MessageRole = "user" | "assistant" | "system";
@@ -35,6 +39,10 @@ export interface Profile {
   stripe_subscription_id: string | null;
   trial_started_at: string | null; // ISO timestamp
   trial_ends_at: string | null; // ISO timestamp
+  trial_ended_at: string | null; // ISO timestamp
+  data_retention_expires_at: string | null; // ISO timestamp
+  data_retention_reason: DataRetentionReason;
+  paid_canceled_at: string | null; // ISO timestamp
 }
 
 /**
@@ -51,8 +59,12 @@ export interface Subscription {
   current_period_end: string | null; // ISO timestamp
   cancel_at_period_end: boolean;
   canceled_at: string | null; // ISO timestamp
+  paid_canceled_at: string | null; // ISO timestamp
   trial_started_at: string | null; // ISO timestamp
   trial_ends_at: string | null; // ISO timestamp
+  trial_ended_at: string | null; // ISO timestamp
+  data_retention_expires_at: string | null; // ISO timestamp
+  data_retention_reason: DataRetentionReason;
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
 }
@@ -149,6 +161,63 @@ export type AgentUpdate = Partial<Omit<Agent, "id" | "created_at">> & {
 };
 
 export type AgentConversationUpdate = Partial<Omit<AgentConversation, "id" | "created_at">> & {
+  updated_at?: string;
+};
+
+/**
+ * Aloha profiles table
+ */
+export interface AlohaProfile {
+  id: string; // UUID
+  user_id: string; // UUID, references auth.users.id
+  display_name: string; // What Aloha calls itself
+  voice_id: string; // Legacy: Selected voice ID (kept for backward compatibility)
+  voice_key: string | null; // New: Selected voice profile key (one of 4 predefined profiles)
+  voice_options: Record<string, any> | null; // Optional cache of available voices
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/**
+ * Database insert types for Aloha profiles
+ */
+export type AlohaProfileInsert = Omit<AlohaProfile, "id" | "created_at" | "updated_at">;
+
+/**
+ * Database update types for Aloha profiles
+ */
+export type AlohaProfileUpdate = Partial<Omit<AlohaProfile, "id" | "user_id" | "created_at">> & {
+  updated_at?: string;
+};
+
+/**
+ * Contact profiles table
+ */
+export interface ContactProfile {
+  id: string; // UUID
+  user_id: string; // UUID, references auth.users.id
+  phone_number: string;
+  name: string | null;
+  notes: string | null;
+  do_not_call: boolean;
+  preferred_call_window: any | null; // JSONB
+  last_called_at: string | null; // ISO timestamp
+  last_campaign_id: string | null; // UUID, references call_campaigns.id
+  last_outcome: string | null;
+  times_contacted: number;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/**
+ * Database insert types for contact profiles
+ */
+export type ContactProfileInsert = Omit<ContactProfile, "id" | "created_at" | "updated_at">;
+
+/**
+ * Database update types for contact profiles
+ */
+export type ContactProfileUpdate = Partial<Omit<ContactProfile, "id" | "user_id" | "created_at">> & {
   updated_at?: string;
 };
 

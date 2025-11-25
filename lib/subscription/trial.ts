@@ -99,18 +99,26 @@ export async function getTrialStatus(userId: string): Promise<{
 }
 
 /**
- * Check if user has active access (not expired trial)
+ * Check if user has active access (not expired trial, not in canceled/paused state)
+ * 
+ * Note: Users in retention window may have limited access, but this function
+ * checks for full active access (can use all features).
  */
 export async function hasActiveAccess(userId: string): Promise<boolean> {
   const supabase = getSupabaseServerClient();
 
   const { data: subscription } = await supabase
     .from("subscriptions")
-    .select("tier, status, trial_ends_at, stripe_subscription_id")
+    .select("tier, status, trial_ends_at, stripe_subscription_id, data_retention_expires_at")
     .eq("user_id", userId)
     .single();
 
   if (!subscription) {
+    return false;
+  }
+
+  // If data has been cleared, no active access
+  if (subscription.tier === "data_cleared") {
     return false;
   }
 
@@ -124,6 +132,25 @@ export async function hasActiveAccess(userId: string): Promise<boolean> {
     const trialEnd = new Date(subscription.trial_ends_at);
     const now = new Date();
     if (now > trialEnd && !subscription.stripe_subscription_id) {
+      return false;
+    }
+  }
+
+  // If canceled/paused and past retention window, no access
+  if (
+    subscription.status === "canceled" ||
+    subscription.status === "paused" ||
+    subscription.status === "inactive"
+  ) {
+    // If past retention window, no access
+    if (subscription.data_retention_expires_at) {
+      const retentionEnd = new Date(subscription.data_retention_expires_at);
+      const now = new Date();
+      if (now > retentionEnd) {
+        return false;
+      }
+    } else {
+      // No retention window set, no access
       return false;
     }
   }

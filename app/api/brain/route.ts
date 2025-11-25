@@ -5,6 +5,9 @@ import { getModelForTask } from "@/lib/agents/router";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 import { hasAgentAccess, isAdmin, getUserEmail } from "@/lib/auth";
 import { hasActiveAccess } from "@/lib/subscription/trial";
+import { getBusinessContext } from "@/lib/business-context";
+import { logKnowledgeGap } from "@/lib/knowledge-gap-logger";
+import { getAlohaDisplayName } from "@/lib/aloha/profile";
 import type { AgentKey, TaskType } from "@/lib/agents/config";
 import type {
   ChatCompletionMessageParam,
@@ -21,20 +24,98 @@ const SYSTEM_PROMPTS: Record<AgentId, string> = {
   aloha: `
 You are ALOHA, the CommanderX call assistant. You help users triage calls, summarize key points, and decide next actions. If you are provided with existing follow-ups, consider them as commitments that influence your recommendations.
 
+IMPORTANT: You will be provided with business context information including business name, services, hours, location, and knowledge from their website. Use this information to:
+- Answer questions about services, pricing, operating hours, location, and policies
+- Introduce yourself appropriately (e.g., "Thank you for calling [BusinessName]...")
+- Reference specific information from the business knowledge base when relevant
+- Provide accurate information based on what the business has shared
+
+CRITICAL - UNKNOWN INFORMATION HANDLING:
+- If you are asked about information that is NOT in the business context (e.g., pricing, specific services, policies, hours, location details), you MUST:
+  1. Politely tell the caller: "I'm sorry, I don't have that information available right now. I'll make sure someone follows up with you about this."
+  2. NEVER invent or guess information
+  3. The system will automatically log this as a knowledge gap for the user to resolve
+- Only use information that is explicitly provided in the business context
+- If unsure, always err on the side of logging a knowledge gap rather than guessing
+
+REAL-WORLD CALLER BEHAVIOR HANDLING:
+
+AUDIO & TECHNICAL ISSUES:
+- If audio quality is poor or you cannot hear the caller clearly: Politely ask them to repeat, speak louder, or offer to call back
+- If there's echo, static, or background noise: Acknowledge it and suggest moving to a quieter location or callback
+- If you detect voicemail: Leave a brief, professional message with business name, purpose, and callback number
+- If call has significant lag: Slow down your speech and be patient
+- Always remain calm and professional, even with technical difficulties
+
+CALLER BEHAVIOR VARIATIONS:
+- If caller interrupts you: Stop speaking immediately (barge-in handling), acknowledge them, and let them speak
+- If caller speaks too fast: Politely ask them to repeat more slowly: "Could you repeat that a bit slower?"
+- If caller speaks slowly: Be patient and don't rush them
+- If caller switches topics: Acknowledge and gently redirect: "I understand. Let me help you with [original topic]."
+- If caller tests if you're AI: Be honest: "I'm Aloha, an AI assistant from [BusinessName]. I'm here to help you today."
+- If caller thinks you're human: Clarify politely: "I'm Aloha, an AI assistant from [BusinessName]."
+- If caller has a strong accent: Be patient, ask for clarification if needed, never make assumptions
+
+EMOTIONAL & SOCIAL SCENARIOS:
+- If caller is angry or hostile: Use calm, empathetic tone. Say: "I understand you're frustrated, and I'm sorry for any inconvenience. Let me see how I can help."
+- If caller is upset or crying: Be compassionate: "I can hear this is difficult for you. I'm here to help. Would you like to take a moment, or would you prefer I call you back later?"
+- If caller is frustrated: Acknowledge: "I understand this is frustrating. Let me help you get this sorted out."
+- NEVER escalate or become defensive, even if caller is rude
+- If caller mentions an EMERGENCY: Immediately redirect: "For emergencies, please call 911 immediately. I'm an AI assistant and cannot help with emergencies. Please hang up and call 911 if you need emergency assistance." Then end the call.
+
+CALLER IDENTITY ISSUES:
+- If caller is not the intended customer: Be cautious about sharing sensitive information. Keep responses general.
+- If caller refuses to identify themselves: Politely ask: "I'd like to make sure I'm speaking with the right person. Could you confirm your name?"
+- If caller appears to be a child: Say: "Hi there! Is there a grown-up nearby I could speak with?" Then end call if no adult available.
+
+BUSINESS LOGIC SCENARIOS:
+- If caller requests unavailable service: "I understand you're interested in [service]. That's not something we currently offer, but I'd be happy to tell you about our available services."
+- If caller wants to opt out / do-not-call: "I understand you'd like to stop receiving calls from us. I'll make sure you're removed from our calling list. Is that correct?" Then confirm and process opt-out.
+- If caller mentions legal concerns: "I understand you have legal concerns. I'm an AI assistant and cannot provide legal advice. I'll make sure someone from our team follows up with you about this."
+- If caller asks for information you don't have: "I don't have that information available right now, but I'll make sure someone follows up with you about this."
+
+SAFETY & COMPLIANCE:
+- NEVER pretend to be human - always identify as Aloha, an AI assistant
+- NEVER give medical, legal, or financial advice - always defer to professionals
+- NEVER make promises outside BusinessContext
+- NEVER share personal data or sensitive information
+- ALWAYS allow caller to end call immediately: "Of course. You can end this call at any time."
+- ALWAYS remain polite, calm, and neutral, regardless of caller behavior
+
+GENERAL GUIDELINES:
+- Keep responses short, clear, and professional
+- Use the caller's name if you know it
+- Be patient and understanding
+- If you cannot help, offer callback or follow-up
+- Always end calls politely: "Thank you for calling. Have a great day!"
+
 Each reply MUST end with:
 CALL_OUTCOME:
-- outcome: <short text such as "resolved", "needs_followup", "scheduled", etc.>
+- outcome: <short text such as "resolved", "needs_followup", "scheduled", "audio_issue", "opt_out", "emergency_redirected", etc.>
 - followup_title: <short title or "none">
 - followup_description: <sentence or "none">
 - followup_due_at: <ISO date-time or "none">
 `.trim(),
 
   insight: `
-You are INSIGHT, the analytics agent ...
+You are INSIGHT, the analytics agent for CommanderX. You analyze business data, generate insights, and provide recommendations.
+
+IMPORTANT: You will be provided with business context information including business name, industry, services, and knowledge from their website. Use this information to:
+- Provide contextually relevant insights based on the business type and industry
+- Reference business-specific information when generating recommendations
+- Tailor your analysis to the business's services and operations
+
+When generating insights, consider the business context to make your recommendations more relevant and actionable.
 `.trim(),
 
   sync: `
 You are SYNC, the CommanderX email + calendar agent. Summarize emails crisply, highlight priorities, and recommend next calendar/email actions. Use any provided follow-up list to avoid duplicating tasks.
+
+IMPORTANT: You will be provided with business context information including business name, services, hours, location, and knowledge from their website. Use this information to:
+- Draft emails that match the business's tone and style
+- Schedule calendar events considering business hours and timezone
+- Reference business-specific information when relevant (e.g., services, policies)
+- Use business knowledge to provide better context in email summaries
 
 Each reply MUST end with:
 EMAIL_OUTCOME:
@@ -48,6 +129,8 @@ EMAIL_OUTCOME:
 You are Studio, CMDᴿ's visual design and content assistant.
 
 Your job is to help the user edit their media. You can modify text overlays, fonts, colors, sizes, effects, alignment, positions, brightness, contrast, saturation, and more.
+
+IMPORTANT: You will be provided with business watermark settings. If watermark is enabled, you should automatically apply or suggest watermarking images with the specified text/logo at the specified position. This is a default behavior unless the user explicitly requests otherwise.
 
 CRITICAL: When the user asks for a change, you MUST use a tool call. DO NOT reply with plain text unless they explicitly ask for advice or explanation.
 
@@ -214,6 +297,86 @@ function safeDate(value?: string) {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * Detect knowledge gaps in Aloha's response and log them
+ * 
+ * This function looks for phrases that indicate missing information
+ * and logs them as knowledge gaps for the user to resolve.
+ */
+async function detectAndLogKnowledgeGaps(
+  userId: string,
+  responseText: string,
+  userMessage: string,
+  businessContext: any,
+  callContext: any
+): Promise<void> {
+  try {
+    // Common phrases that indicate missing information
+    const missingInfoPhrases = [
+      /don'?t have (?:that|this) information/i,
+      /don'?t know (?:about|the|that|this)/i,
+      /(?:don'?t|do not) have (?:the|that|this|any) (?:information|details|data)/i,
+      /(?:unable|can'?t|cannot) (?:to )?(?:provide|give|tell|find|locate)/i,
+      /(?:not|no) (?:available|provided|found|in|available in)/i,
+      /(?:sorry|apologize),? (?:i|we) (?:don'?t|do not)/i,
+    ];
+
+    // Check if response indicates missing information
+    const hasMissingInfo = missingInfoPhrases.some((phrase) =>
+      phrase.test(responseText)
+    );
+
+    if (!hasMissingInfo) {
+      return; // No knowledge gap detected
+    }
+
+    // Extract what information was requested from user message
+    const requestedInfoMatch = userMessage.match(
+      /(?:what|tell me|do you know|can you tell me|what are|what is|how much|when|where|who).*?[?.!]?$/i
+    );
+    const requestedInfo = requestedInfoMatch
+      ? requestedInfoMatch[0].trim()
+      : "Information requested during call";
+
+    // Determine category based on keywords
+    let category: "pricing" | "services" | "hours" | "policy" | "booking" | "location" | "contact" | "other" = "other";
+    const lowerMessage = userMessage.toLowerCase();
+    if (lowerMessage.match(/\b(?:price|pricing|cost|fee|charge|rate|how much)\b/)) {
+      category = "pricing";
+    } else if (lowerMessage.match(/\b(?:service|services|offer|offering|what do you)\b/)) {
+      category = "services";
+    } else if (lowerMessage.match(/\b(?:hour|hours|open|close|when|time|schedule)\b/)) {
+      category = "hours";
+    } else if (lowerMessage.match(/\b(?:policy|policies|rule|rules|terms|condition)\b/)) {
+      category = "policy";
+    } else if (lowerMessage.match(/\b(?:book|booking|appointment|schedule|reserve)\b/)) {
+      category = "booking";
+    } else if (lowerMessage.match(/\b(?:location|where|address|city|state)\b/)) {
+      category = "location";
+    } else if (lowerMessage.match(/\b(?:contact|phone|email|reach|call|text)\b/)) {
+      category = "contact";
+    }
+
+    // Log the knowledge gap
+    await logKnowledgeGap({
+      userId,
+      agent: "aloha",
+      source: "call",
+      question: userMessage,
+      requestedInfo,
+      suggestedCategory: category,
+      contextId: callContext.callId || callContext.id || undefined,
+      contextMetadata: {
+        responseText: responseText.substring(0, 500), // Store snippet of response
+        callContext: callContext,
+      },
+    });
+  } catch (error) {
+    // Don't fail the request if knowledge gap logging fails
+    console.error("Error logging knowledge gap:", error);
+  }
 }
 
 export async function POST(req: Request) {
@@ -424,7 +587,259 @@ export async function POST(req: Request) {
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       ) ?? [];
 
-    const systemPrompt = SYSTEM_PROMPTS[agent];
+    // Fetch business context for ALL agents
+    // All agents can benefit from business information for context-aware responses
+    let businessContext = null;
+    if (userId !== "dev-user") {
+      try {
+        businessContext = await getBusinessContext(userId);
+      } catch (error) {
+        console.error("Error fetching business context:", error);
+        // Continue without business context if fetch fails
+      }
+    }
+
+    // Fetch contact profile for Aloha calls (if phone number is provided)
+    let contactProfile = null;
+    if (agent === "aloha" && userId !== "dev-user" && callContext?.phoneNumber) {
+      try {
+        const { getContactForCallContext } = await import("@/lib/aloha/contact-memory");
+        contactProfile = await getContactForCallContext(userId, callContext.phoneNumber);
+      } catch (error) {
+        console.error("Error fetching contact profile:", error);
+        // Continue without contact profile if fetch fails
+      }
+    }
+
+    // Build enhanced system prompt with business context
+    // ALL agents receive business context for context-aware responses
+    let systemPrompt = SYSTEM_PROMPTS[agent];
+    
+    // For Aloha agent, inject the user-configured display name
+    if (agent === "aloha" && userId !== "dev-user") {
+      const alohaDisplayName = await getAlohaDisplayName(userId);
+      // Replace "ALOHA" references with the configured display name
+      systemPrompt = systemPrompt.replace(/ALOHA/g, alohaDisplayName.toUpperCase());
+      systemPrompt = systemPrompt.replace(/Aloha/g, alohaDisplayName);
+      // Update introduction instructions to use display name
+      if (businessContext?.profile.businessName) {
+        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaDisplayName}" instead of "Aloha". For example: "Hi, this is ${alohaDisplayName} from ${businessContext.profile.businessName}. How can I help you today?"`;
+      } else {
+        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaDisplayName}" instead of "Aloha".`;
+      }
+    }
+    
+    if (businessContext) {
+      const businessInfo: string[] = [];
+      
+      // Core business information (relevant for all agents)
+      if (businessContext.profile.businessName) {
+        businessInfo.push(`Business Name: ${businessContext.profile.businessName}`);
+      }
+      if (businessContext.profile.industry) {
+        businessInfo.push(`Industry: ${businessContext.profile.industry}`);
+      }
+      if (businessContext.profile.description) {
+        businessInfo.push(`Description: ${businessContext.profile.description}`);
+      }
+      if (businessContext.profile.hours) {
+        businessInfo.push(`Operating Hours: ${businessContext.profile.hours}`);
+      }
+      if (businessContext.profile.location) {
+        businessInfo.push(`Location: ${businessContext.profile.location}`);
+      }
+      if (businessContext.profile.serviceArea) {
+        businessInfo.push(`Service Area: ${businessContext.profile.serviceArea}`);
+      }
+      if (businessContext.profile.services) {
+        const servicesStr = Array.isArray(businessContext.profile.services)
+          ? businessContext.profile.services.join(", ")
+          : businessContext.profile.services;
+        businessInfo.push(`Services: ${servicesStr}`);
+      }
+      if (businessContext.profile.contactEmail) {
+        businessInfo.push(`Contact Email: ${businessContext.profile.contactEmail}`);
+      }
+      if (businessContext.profile.contactPhone) {
+        businessInfo.push(`Contact Phone: ${businessContext.profile.contactPhone}`);
+      }
+      if (businessContext.profile.timezone) {
+        businessInfo.push(`Timezone: ${businessContext.profile.timezone}`);
+      }
+      if (businessContext.profile.notes) {
+        businessInfo.push(`Special Instructions: ${businessContext.profile.notes}`);
+      }
+
+      // Agent-specific context additions
+      if (agent === "aloha") {
+        // Aloha gets full knowledge base for answering questions
+        if (businessContext.knowledgeChunks.length > 0) {
+          businessInfo.push("\nBusiness Knowledge Base:");
+          businessContext.knowledgeChunks.forEach((chunk) => {
+            if (chunk.title) {
+              businessInfo.push(`\n[${chunk.title}]`);
+            }
+            businessInfo.push(chunk.content.substring(0, 500)); // Limit each chunk to 500 chars
+          });
+        }
+        if (businessInfo.length > 0) {
+          // Get Aloha display name for context
+          const alohaDisplayName = userId !== "dev-user" 
+            ? await getAlohaDisplayName(userId) 
+            : "Aloha";
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this information to answer questions accurately and provide helpful responses. Remember to introduce yourself as "${alohaDisplayName}" when speaking to callers.`;
+        }
+
+        // Add contact context if available
+        if (contactProfile) {
+          try {
+            const { buildContactContextPrompt } = await import("@/lib/aloha/contact-context");
+            const contactContext = buildContactContextPrompt(contactProfile);
+            if (contactContext) {
+              systemPrompt += contactContext;
+              
+              // Add special handling for do-not-call contacts
+              if (contactProfile.do_not_call) {
+                systemPrompt += `\n\nIMPORTANT: This contact has requested not to receive calls. You may still answer inbound calls from them, but do NOT try to sell, upsell, or push campaigns. Be respectful and help with their immediate needs only.`;
+              }
+              
+              // Add tone adjustment for returning contacts
+              if (contactProfile.times_contacted > 0) {
+                const { getToneAdjustment } = await import("@/lib/aloha/contact-context");
+                const toneAdjustment = getToneAdjustment(contactProfile);
+                if (toneAdjustment) {
+                  systemPrompt += `\n\n${toneAdjustment}`;
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error building contact context:", error);
+            // Continue without contact context if build fails
+          }
+        }
+
+        // Add scenario-aware instructions if call context is provided
+        if (callContext && typeof callContext === "object") {
+          try {
+            const { generateScenarioInstructions } = await import("@/lib/aloha/scenario-handler");
+            const { detectScenarios, type CallContext as CallContextType } = await import("@/lib/aloha/scenario-detection");
+            
+            const scenarioContext: CallContextType = {
+              sttConfidence: callContext.sttConfidence,
+              audioQuality: callContext.audioQuality,
+              hasEcho: callContext.hasEcho,
+              hasBackgroundNoise: callContext.hasBackgroundNoise,
+              isVoicemail: callContext.isVoicemail,
+              callLag: callContext.callLag,
+              interruptions: callContext.interruptions,
+              silenceDuration: callContext.silenceDuration,
+              speakingRate: callContext.speakingRate,
+              topicSwitches: callContext.topicSwitches,
+              bargeIns: callContext.bargeIns,
+              emotionalTone: callContext.emotionalTone,
+              keywords: callContext.keywords,
+              callerIdentified: callContext.callerIdentified,
+              isChild: callContext.isChild,
+              requestedService: callContext.requestedService,
+              requestedInfo: callContext.requestedInfo,
+              wantsOptOut: callContext.wantsOptOut,
+              mentionsLegal: callContext.mentionsLegal,
+              mentionsEmergency: callContext.mentionsEmergency,
+              transcript: callContext.transcript,
+              lastUserMessage: message,
+            };
+
+            const scenarios = detectScenarios(scenarioContext);
+            if (scenarios.length > 0) {
+              const scenarioInstructions = generateScenarioInstructions(scenarios);
+              if (scenarioInstructions) {
+                systemPrompt += `\n\n[CURRENT CALL SCENARIOS]\n${scenarioInstructions}\n\nAdjust your responses based on these scenarios. Use the provided response snippets when appropriate.`;
+              }
+            }
+          } catch (error) {
+            console.error("Error generating scenario instructions:", error);
+            // Continue without scenario instructions if generation fails
+          }
+        }
+      } else if (agent === "studio") {
+        // Studio gets watermark settings
+        if (businessContext.profile.watermarkSettings?.enabled) {
+          const watermarkInfo: string[] = [];
+          watermarkInfo.push("WATERMARK SETTINGS:");
+          watermarkInfo.push(`- Enabled: Yes`);
+          if (businessContext.profile.watermarkSettings.text) {
+            watermarkInfo.push(`- Text: "${businessContext.profile.watermarkSettings.text}"`);
+          }
+          if (businessContext.profile.watermarkSettings.logoUrl) {
+            watermarkInfo.push(`- Logo URL: ${businessContext.profile.watermarkSettings.logoUrl}`);
+          }
+          if (businessContext.profile.watermarkSettings.position) {
+            watermarkInfo.push(`- Position: ${businessContext.profile.watermarkSettings.position}`);
+          }
+          watermarkInfo.push("\nBy default, apply this watermark to images unless the user explicitly requests otherwise.");
+          businessInfo.push(`\n${watermarkInfo.join("\n")}`);
+        }
+        if (businessInfo.length > 0) {
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this business information to provide contextually relevant suggestions and apply branding preferences.`;
+        }
+      } else if (agent === "sync") {
+        // Sync gets business info for email/calendar context
+        if (businessContext.knowledgeChunks.length > 0) {
+          // Include relevant knowledge chunks for email context
+          const relevantChunks = businessContext.knowledgeChunks
+            .filter(chunk => 
+              chunk.source === "form" || 
+              chunk.title?.toLowerCase().includes("service") ||
+              chunk.title?.toLowerCase().includes("policy")
+            )
+            .slice(0, 3); // Limit to 3 most relevant chunks
+          
+          if (relevantChunks.length > 0) {
+            businessInfo.push("\nRelevant Business Information:");
+            relevantChunks.forEach((chunk) => {
+              if (chunk.title) {
+                businessInfo.push(`\n[${chunk.title}]`);
+              }
+              businessInfo.push(chunk.content.substring(0, 300));
+            });
+          }
+        }
+        if (businessInfo.length > 0) {
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this information to draft contextually appropriate emails and schedule events considering business hours and timezone.`;
+        }
+      } else if (agent === "insight") {
+        // Insight gets business info for context-aware analysis
+        if (businessContext.knowledgeChunks.length > 0) {
+          // Include business knowledge for better insights
+          const relevantChunks = businessContext.knowledgeChunks
+            .filter(chunk => 
+              chunk.source === "form" || 
+              chunk.title?.toLowerCase().includes("service") ||
+              chunk.title?.toLowerCase().includes("about")
+            )
+            .slice(0, 2); // Limit to 2 most relevant chunks
+          
+          if (relevantChunks.length > 0) {
+            businessInfo.push("\nBusiness Background:");
+            relevantChunks.forEach((chunk) => {
+              if (chunk.title) {
+                businessInfo.push(`\n[${chunk.title}]`);
+              }
+              businessInfo.push(chunk.content.substring(0, 400));
+            });
+          }
+        }
+        if (businessInfo.length > 0) {
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this business information to generate contextually relevant insights and recommendations tailored to this business.`;
+        }
+      } else {
+        // For any other agents, provide basic business context
+        if (businessInfo.length > 0) {
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this business information to provide contextually relevant responses.`;
+        }
+      }
+    }
+
     const model = getModelForTask(agent, taskType);
     // Use ChatCompletionMessageParam[] to support multi-part content (text + images) for Studio
     const openAiMessages: ChatCompletionMessageParam[] = [
@@ -466,6 +881,30 @@ export async function POST(req: Request) {
     if (agent === "studio") {
       // Build context string for Studio agent
       const contextParts: string[] = [];
+      
+      // Add business context summary for Studio
+      if (businessContext) {
+        if (businessContext.profile.businessName) {
+          contextParts.push(`Business: ${businessContext.profile.businessName}`);
+        }
+        if (businessContext.profile.industry) {
+          contextParts.push(`Industry: ${businessContext.profile.industry}`);
+        }
+      }
+      
+      // Add watermark settings to context if enabled
+      if (businessContext?.profile.watermarkSettings?.enabled) {
+        contextParts.push(`Watermark enabled: true`);
+        if (businessContext.profile.watermarkSettings.text) {
+          contextParts.push(`Watermark text: "${businessContext.profile.watermarkSettings.text}"`);
+        }
+        if (businessContext.profile.watermarkSettings.logoUrl) {
+          contextParts.push(`Watermark logo URL: ${businessContext.profile.watermarkSettings.logoUrl}`);
+        }
+        if (businessContext.profile.watermarkSettings.position) {
+          contextParts.push(`Watermark position: ${businessContext.profile.watermarkSettings.position}`);
+        }
+      }
       
       if (context.brightness !== undefined) {
         contextParts.push(`Current brightness: ${context.brightness}`);
@@ -681,6 +1120,83 @@ export async function POST(req: Request) {
     const text =
       response.choices[0]?.message?.content ?? "No response from model";
 
+    // Detect and log knowledge gaps for Aloha
+    // Also handle scenarios and update call notes
+    if (agent === "aloha" && userId !== "dev-user") {
+      await detectAndLogKnowledgeGaps(
+        userId,
+        text,
+        message,
+        businessContext,
+        callContext
+      );
+
+      // Handle scenarios and update call notes if needed
+      if (callContext && typeof callContext === "object") {
+        try {
+          const { handleScenarios } = await import("@/lib/aloha/scenario-handler");
+          const { detectScenarios, type CallContext as CallContextType } = await import("@/lib/aloha/scenario-detection");
+          
+          const scenarioContext: CallContextType = {
+            sttConfidence: callContext.sttConfidence,
+            audioQuality: callContext.audioQuality,
+            hasEcho: callContext.hasEcho,
+            hasBackgroundNoise: callContext.hasBackgroundNoise,
+            isVoicemail: callContext.isVoicemail,
+            callLag: callContext.callLag,
+            interruptions: callContext.interruptions,
+            silenceDuration: callContext.silenceDuration,
+            speakingRate: callContext.speakingRate,
+            topicSwitches: callContext.topicSwitches,
+            bargeIns: callContext.bargeIns,
+            emotionalTone: callContext.emotionalTone,
+            keywords: callContext.keywords,
+            callerIdentified: callContext.callerIdentified,
+            isChild: callContext.isChild,
+            requestedService: callContext.requestedService,
+            requestedInfo: callContext.requestedInfo,
+            wantsOptOut: callContext.wantsOptOut,
+            mentionsLegal: callContext.mentionsLegal,
+            mentionsEmergency: callContext.mentionsEmergency,
+            transcript: callContext.transcript,
+            lastUserMessage: message,
+          };
+
+          const scenarioResponse = await handleScenarios(
+            scenarioContext,
+            businessContext,
+            userId,
+            callContext.callId || callContext.id
+          );
+
+          // Update call notes if scenario handler provided notes
+          // This would be done after call is created in the calls table
+          if (scenarioResponse.updateCallNotes) {
+            // Store in metadata for later use when call record is created
+            metadata = { ...metadata, scenarioNotes: scenarioResponse.updateCallNotes };
+          }
+
+          // Handle opt-out if needed
+          if (scenarioResponse.shouldOptOut) {
+            // Mark caller as opted out
+            // Update contact profile with do-not-call flag
+            if (callContext?.phoneNumber) {
+              try {
+                const { setDoNotCall } = await import("@/lib/aloha/contact-memory");
+                await setDoNotCall(userId, callContext.phoneNumber, true);
+              } catch (error) {
+                console.error("Error setting do-not-call flag:", error);
+              }
+            }
+            metadata = { ...metadata, shouldOptOut: "true" };
+          }
+        } catch (error) {
+          console.error("Error handling scenarios:", error);
+          // Don't fail the request if scenario handling fails
+        }
+      }
+    }
+
     const now = Date.now();
 
     // Skip message inserts in dev mode when using dummy conversation ID
@@ -721,13 +1237,50 @@ export async function POST(req: Request) {
         "CALL_OUTCOME"
       );
       const outcome = normalizeValue(fields["outcome"]) || "unspecified";
+      
+      // Get contact profile ID if available
+      let contactId: string | null = null;
+      let phoneNumber: string | null = null;
+      if (callContext?.phoneNumber && contactProfile) {
+        contactId = contactProfile.id;
+        phoneNumber = callContext.phoneNumber;
+      } else if (callContext?.phoneNumber) {
+        // Look up or create contact profile
+        try {
+          const { lookupOrCreateContact, normalizePhoneNumber: normalizePhone } = await import("@/lib/aloha/contact-memory");
+          const normalizedPhone = normalizePhone(callContext.phoneNumber);
+          const contact = await lookupOrCreateContact(userId, normalizedPhone);
+          if (contact) {
+            contactId = contact.id;
+            phoneNumber = normalizedPhone;
+          }
+        } catch (error) {
+          console.error("Error looking up contact profile:", error);
+        }
+      }
+
+      // Determine sentiment from intent classification (if available)
+      let sentiment: string | null = null;
+      if (callContext?.emotionalState || callContext?.sentiment) {
+        sentiment = callContext.emotionalState || callContext.sentiment || null;
+      }
+
+      // Determine direction (inbound vs outbound)
+      const direction = callContext?.direction || callContext?.callType || null;
+
       const { data: callInsert, error: callError } = await supabase
         .from("calls")
         .insert({
           user_id: userId,
           agent_id: agentId,
+          contact_id: contactId,
+          campaign_id: callContext?.campaignId || null,
+          phone_number: phoneNumber,
           summary: cleaned,
           outcome,
+          sentiment,
+          direction,
+          is_test_call: callContext?.isTestCall || false,
           started_at: safeDate(callContext.started_at) ?? new Date(now).toISOString(),
           ended_at: safeDate(callContext.ended_at) ?? new Date(now).toISOString(),
         })
@@ -738,6 +1291,43 @@ export async function POST(req: Request) {
         console.error("Call insert failed:", callError);
       } else if (callInsert?.id) {
         metadata = { ...metadata, callId: callInsert.id };
+
+        // Update contact profile after call (if not a test call and phone number available)
+        if (!callContext?.isTestCall && phoneNumber) {
+          try {
+            const { updateContactAfterCall, determineCallOutcome } = await import("@/lib/aloha/contact-memory");
+            const { classifyIntent } = await import("@/lib/aloha/intent-classification");
+            
+            // Determine call outcome
+            const intent = classifyIntent(message);
+            const callOutcome = determineCallOutcome(intent, message, cleaned) || outcome;
+            
+            // Check if outcome indicates do-not-call
+            let doNotCall = false;
+            if (callOutcome === "do_not_call" || outcome === "opt_out" || metadata?.shouldOptOut === "true") {
+              doNotCall = true;
+            }
+            
+            // Update contact profile
+            await updateContactAfterCall(userId, phoneNumber, {
+              last_called_at: new Date(now).toISOString(),
+              last_campaign_id: callContext?.campaignId || null,
+              last_outcome: callOutcome,
+              do_not_call: doNotCall,
+              sentiment: sentiment || null,
+            });
+            
+            // If do-not-call, update the flag
+            if (doNotCall) {
+              const { setDoNotCall } = await import("@/lib/aloha/contact-memory");
+              await setDoNotCall(userId, phoneNumber, true);
+            }
+          } catch (error) {
+            console.error("Error updating contact profile after call:", error);
+            // Don't fail the request if contact update fails
+          }
+        }
+
         const followupTitle = normalizeValue(fields["followup_title"]);
         if (followupTitle) {
           const { error: followupError, data: followupInsert } = await supabase

@@ -202,22 +202,37 @@ export async function isTrialExpired(userId: string): Promise<boolean> {
  * - Trial period ends
  * - User tries to access features after trial expiration
  * 
+ * Sets 30-day data retention window automatically.
+ * 
  * @param userId - User's ID
  */
 export async function expireTrial(userId: string): Promise<void> {
   const supabase = getSupabaseServerClient();
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      subscription_tier: "trial_expired",
-      subscription_status: "expired",
-    })
-    .eq("id", userId);
+  // Use the RPC function that sets retention window
+  const { error: rpcError } = await supabase.rpc("expire_trial_with_retention", {
+    user_id_param: userId,
+  });
 
-  if (error) {
-    console.error("Error expiring trial:", error);
-    throw new Error("Failed to expire trial");
+  if (rpcError) {
+    // Fallback to direct update if RPC fails
+    console.warn("RPC expire_trial_with_retention failed, using direct update:", rpcError);
+    
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({
+        tier: "trial_expired",
+        status: "expired",
+        trial_ended_at: new Date().toISOString(),
+        data_retention_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        data_retention_reason: "trial_expired",
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error expiring trial:", error);
+      throw new Error("Failed to expire trial");
+    }
   }
 }
 

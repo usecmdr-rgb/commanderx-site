@@ -56,8 +56,8 @@ const AppSidebar = () => {
     return (
       <Link
         href={href as any}
-        className={`flex items-center justify-center space-x-3 rounded-2xl font-semibold transition ${
-          isLarge ? "px-8 py-5 text-lg" : "px-6 py-4 text-base"
+        className={`flex items-center justify-center space-x-2 sm:space-x-3 rounded-2xl font-semibold transition whitespace-nowrap ${
+          isLarge ? "px-4 sm:px-8 py-3 sm:py-5 text-base sm:text-lg" : "px-3 sm:px-6 py-2 sm:py-4 text-sm sm:text-base"
         } ${
           active && isAgent
             ? "border-2 bg-transparent border-slate-900 dark:border-white text-slate-900 dark:text-white"
@@ -66,15 +66,15 @@ const AppSidebar = () => {
             : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
         }`}
       >
-        <Icon size={isLarge ? 26 : 22} />
-        <span>{label}</span>
+        <Icon size={isLarge ? 22 : 20} className="sm:w-[26px] sm:h-[26px] flex-shrink-0" />
+        <span className="hidden sm:inline">{label}</span>
       </Link>
     );
   };
 
   return (
-    <aside className="w-full rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-      <nav className="flex items-center justify-evenly flex-wrap gap-3" role="navigation" aria-label="Agent navigation">
+    <aside className="w-full rounded-3xl border border-slate-200 bg-white/70 p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 overflow-x-auto">
+      <nav className="flex items-center justify-start sm:justify-evenly flex-wrap gap-2 sm:gap-3 min-w-fit" role="navigation" aria-label="Agent navigation">
         {allLinks.map(({ href, label, icon, isLarge, agentKey }) => (
           <LinkItem 
             key={`${href}-${agentKey || 'dashboard'}`} 

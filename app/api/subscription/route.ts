@@ -10,6 +10,7 @@ import {
   expireTrial,
   hasEmailUsedTrial,
 } from "@/lib/trial-eligibility";
+import { getDataRetentionStatus } from "@/lib/subscription/data-retention";
 
 /**
  * GET /api/subscription
@@ -134,6 +135,9 @@ export async function GET(request: NextRequest) {
       ? await hasEmailUsedTrial(userEmail)
       : profile.has_used_trial || false;
 
+    // Get data retention status
+    const retentionStatus = await getDataRetentionStatus(userId);
+
     return NextResponse.json({
       subscription: {
         tier: profile.subscription_tier || subscription?.metadata?.tier || null,
@@ -150,6 +154,12 @@ export async function GET(request: NextRequest) {
       trial: {
         hasUsedTrial,
         isExpired: profile.subscription_tier === "trial_expired",
+      },
+      retention: {
+        isInRetentionWindow: retentionStatus.hasRetentionWindow && !retentionStatus.isExpired,
+        daysRemaining: retentionStatus.daysRemaining,
+        isDataCleared: retentionStatus.isDataCleared,
+        reason: retentionStatus.reason,
       },
     });
   } catch (error: any) {

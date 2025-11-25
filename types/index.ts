@@ -38,6 +38,49 @@ export interface BusinessInfo {
   notes: string;
 }
 
+// Business Profile types (for database and API)
+export interface BusinessProfile {
+  id: string;
+  userId: string;
+  businessName: string | null;
+  businessType: string | null;
+  description: string | null;
+  primaryWebsiteUrl: string | null;
+  additionalUrls: string[];
+  location: string | null;
+  serviceArea: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  servicesOffered: string | string[] | null;
+  hoursOfOperation: string | null;
+  serviceName: string | null;
+  imageWatermarkEnabled: boolean;
+  imageWatermarkText: string | null;
+  imageWatermarkLogoUrl: string | null;
+  imageWatermarkPosition: string | null;
+  preferences: Record<string, any>;
+  language: string | null;
+  timezone: string | null;
+  notes: string | null;
+  lastCrawledAt: string | null;
+  crawlStatus: "pending" | "in_progress" | "completed" | "failed";
+  crawlError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessKnowledgeChunk {
+  id: string;
+  businessProfileId: string;
+  source: "form" | "website" | "manual";
+  sourceUrl: string | null;
+  title: string | null;
+  content: string;
+  metadata: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AlertCategory {
   id: string;
   name: string;

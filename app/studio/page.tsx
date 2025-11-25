@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState, useRef } from "react";
+import { ChangeEvent, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { mockMediaItems } from "@/lib/data";
 import { useAgentStats, emptyAgentStats } from "@/hooks/useAgentStats";
 import { useAppState } from "@/context/AppStateContext";
@@ -334,19 +334,19 @@ const ColorPicker = ({
     };
   };
 
-  const hslToHex = (h: number, s: number, l: number) => {
+  const hslToHex = useCallback((h: number, s: number, l: number) => {
     const rgb = hslToRgb(h, s, l);
     return `#${rgb.r.toString(16).padStart(2, "0")}${rgb.g.toString(16).padStart(2, "0")}${rgb.b.toString(16).padStart(2, "0")}`;
-  };
+  }, []);
 
-  const updateColor = (newHue: number, newSaturation: number, newLightness: number) => {
+  const updateColor = useCallback((newHue: number, newSaturation: number, newLightness: number) => {
     setHue(newHue);
     setSaturation(newSaturation);
     setLightness(newLightness);
     const newHex = hslToHex(newHue, newSaturation, newLightness);
     onChange(newHex);
     setHexInput(newHex);
-  };
+  }, [hslToHex, onChange]);
 
   useEffect(() => {
     setHexInput(color);
@@ -1946,7 +1946,7 @@ export default function StudioPage() {
   }, [activeAsset]);
 
   // Helper function to update active asset edits
-  const updateActiveAssetEdits = (
+  const updateActiveAssetEdits = useCallback((
     updater: (edits: StudioAsset["edits"]) => StudioAsset["edits"]
   ) => {
     if (!activeAssetId) return;
@@ -1957,7 +1957,7 @@ export default function StudioPage() {
           : asset
       )
     );
-  };
+  }, [activeAssetId]);
 
   // Helper to add a new asset from file
   const addAssetFromFile = async (file: File) => {
@@ -2080,12 +2080,12 @@ export default function StudioPage() {
     }
   };
 
-  const updateTextItem = (id: string, updates: Partial<TextItem>) => {
+  const updateTextItem = useCallback((id: string, updates: Partial<TextItem>) => {
     updateActiveAssetEdits(edits => ({
       ...edits,
       textItems: edits.textItems.map(item => (item.id === id ? { ...item, ...updates } : item)),
     }));
-  };
+  }, [updateActiveAssetEdits]);
 
   // Build Quick Add suggestions from business info
   const quickAddSuggestions = useMemo(() => {
@@ -2186,7 +2186,7 @@ export default function StudioPage() {
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, draggingTextItemId]);
+  }, [isDragging, draggingTextItemId, updateTextItem]);
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

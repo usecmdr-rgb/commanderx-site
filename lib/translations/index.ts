@@ -2007,7 +2007,7 @@ export const translations = {
 export const useTranslation = (lang: LanguageCode) => {
   return (key: TranslationKey): string => {
     const langTranslations = translations[lang as keyof typeof translations];
-    return (langTranslations?.[key] as string) || (translations.en[key] as string) || key;
+    return (langTranslations?.[key as keyof typeof langTranslations] as string) || (translations.en[key] as string) || key;
   };
 };
 

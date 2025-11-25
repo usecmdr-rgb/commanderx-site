@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState, useRef } from "react";
+import { ChangeEvent, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { mockMediaItems } from "@/lib/data";
 import { useAgentStats, emptyAgentStats } from "@/hooks/useAgentStats";
 import { useAppState } from "@/context/AppStateContext";
@@ -945,11 +945,11 @@ export default function StudioPage() {
     }
   };
 
-  const updateTextItem = (id: string, updates: Partial<TextItem>) => {
+  const updateTextItem = useCallback((id: string, updates: Partial<TextItem>) => {
     setTextItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
     );
-  };
+  }, []);
 
   // Build Quick Add suggestions from business info
   const quickAddSuggestions = useMemo(() => {

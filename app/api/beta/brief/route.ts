@@ -141,13 +141,13 @@ export async function POST(request: NextRequest) {
       ...xiData.tasks.map((task) => ({
         id: `task-${task.id}`,
         description: task.description,
-        agent: "xi" as const,
+        agent: "sync" as const,
         priority: task.priority,
       })),
       ...alphaData.deadlines.map((deadline) => ({
         id: `deadline-${deadline.id}`,
         description: deadline.description,
-        agent: "alpha" as const,
+        agent: "aloha" as const,
         priority: "high" as const,
       })),
     ].slice(0, 10);
@@ -158,25 +158,25 @@ export async function POST(request: NextRequest) {
         id: "alert-missed-calls",
         type: "deadline" as const,
         message: `${alphaData.calls.missed} missed calls need follow-up`,
-        agent: "alpha" as const,
+        agent: "aloha" as const,
       }] : [],
       ...xiData.payments > 0 ? [{
         id: "alert-payments",
         type: "payment" as const,
         message: `${xiData.payments} payment-related emails need attention`,
-        agent: "xi" as const,
+        agent: "sync" as const,
       }] : [],
       ...xiData.invoices > 0 ? [{
         id: "alert-invoices",
         type: "deadline" as const,
         message: `${xiData.invoices} invoices to process`,
-        agent: "xi" as const,
+        agent: "sync" as const,
       }] : [],
       ...muData.anomalies.map((anomaly, idx) => ({
         id: `alert-mu-${idx}`,
         type: "deadline" as const,
         message: anomaly,
-        agent: "mu" as const,
+        agent: "studio" as const,
       })),
     ];
 
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
     // Metric insights
     const metricInsights: DailyBrief["metricInsights"] = [
       {
-        agent: "alpha",
+        agent: "aloha",
         metric: "Calls",
         value: alphaData.calls.total,
         trend: alphaData.calls.missed > alphaData.calls.total * 0.1 ? "down" : "up",
@@ -195,14 +195,14 @@ export async function POST(request: NextRequest) {
           : "All calls handled successfully",
       },
       {
-        agent: "xi",
+        agent: "sync",
         metric: "Important Emails",
         value: xiData.importantEmails,
         trend: xiData.importantEmails > 5 ? "up" : "stable",
         insight: `${xiData.importantEmails} important emails flagged`,
       },
       {
-        agent: "mu",
+        agent: "studio",
         metric: "Engagement Rate",
         value: `${muData.metrics.engagement.toFixed(1)}%`,
         trend: muData.performance.trend,
@@ -216,19 +216,19 @@ export async function POST(request: NextRequest) {
         id: "correction-alpha-calls",
         issue: "Missed calls detected",
         suggestion: "Review call routing and availability settings",
-        agent: "alpha" as const,
+        agent: "aloha" as const,
       }] : [],
       ...xiData.unreadEmails > 5 ? [{
         id: "correction-xi-emails",
         issue: "High unread email count",
         suggestion: "Prioritize email triage and response automation",
-        agent: "xi" as const,
+        agent: "sync" as const,
       }] : [],
       ...muData.anomalies.map((anomaly, idx) => ({
         id: `correction-mu-${idx}`,
         issue: anomaly,
         suggestion: "Review content strategy and posting schedule",
-        agent: "mu" as const,
+        agent: "studio" as const,
       })),
     ];
 
@@ -237,13 +237,13 @@ export async function POST(request: NextRequest) {
       ...alphaData.deadlines.map((deadline) => ({
         id: `followup-${deadline.id}`,
         item: deadline.description,
-        agent: "alpha" as const,
+        agent: "aloha" as const,
         priority: "high" as const,
       })),
       ...xiData.tasks.slice(0, 3).map((task) => ({
         id: `followup-${task.id}`,
         item: task.description,
-        agent: "xi" as const,
+        agent: "sync" as const,
         priority: task.priority,
       })),
     ];

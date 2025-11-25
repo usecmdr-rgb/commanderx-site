@@ -1,6 +1,9 @@
-// Re-export AgentId from central config
-export type { AgentId as AgentKey } from "@/lib/config/agents";
+// Import and re-export AgentId from central config
+import type { AgentId } from "@/lib/config/agents";
 export type { AgentId } from "@/lib/config/agents";
+
+// Type alias for backward compatibility
+export type AgentKey = AgentId;
 
 export type ConnectedAccountType = "facebook" | "instagram" | "x" | "linkedin" | "website" | "other";
 

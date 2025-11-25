@@ -4,9 +4,10 @@ import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 // PUT: Update a workflow
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, description, trigger, condition, actions, enabled } = body;
 
@@ -26,7 +27,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from("workflows")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -54,15 +55,16 @@ export async function PUT(
 // DELETE: Delete a workflow
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = getSupabaseServerClient();
     
     const { error } = await supabase
       .from("workflows")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error && error.code !== "PGRST116") {
       throw error;

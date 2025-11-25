@@ -56,11 +56,14 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Update existing profiles to set email_normalized
+-- Note: This requires the auth.users table to be accessible
+-- If this fails, email_normalized will be set when users next interact with the system
 UPDATE profiles 
-SET email_normalized = normalize_email(
+SET email_normalized = LOWER(TRIM(
     (SELECT email FROM auth.users WHERE auth.users.id = profiles.id LIMIT 1)
-)
-WHERE email_normalized IS NULL;
+))
+WHERE email_normalized IS NULL 
+  AND EXISTS (SELECT 1 FROM auth.users WHERE auth.users.id = profiles.id);
 
 -- Add comment explaining the trial tracking system
 COMMENT ON COLUMN profiles.has_used_trial IS 

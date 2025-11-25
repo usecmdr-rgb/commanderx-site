@@ -240,7 +240,13 @@ export interface SubscriptionInfo {
   trialEnd: string | null;
 }
 
+export interface TrialInfo {
+  hasUsedTrial: boolean;
+  isExpired: boolean;
+}
+
 export interface SubscriptionData {
   subscription: SubscriptionInfo;
   paymentMethod: PaymentMethodInfo | null;
+  trial?: TrialInfo;
 }

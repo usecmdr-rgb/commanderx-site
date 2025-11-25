@@ -211,10 +211,10 @@ export default function HomePage() {
             </div>
             <p className="mt-3 text-slate-600 dark:text-slate-300">{agent.description}</p>
             <div className="mt-4 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">
-              {agent.key === "aloha" && t("alphaDetails")}
-              {agent.key === "sync" && t("xiDetails")}
-              {agent.key === "studio" && t("muDetails")}
-              {agent.key === "insight" && t("betaDetails")}
+              {agent.key === "aloha" && t("alohaDetails")}
+              {agent.key === "sync" && t("syncDetails")}
+              {agent.key === "studio" && t("studioDetails")}
+              {agent.key === "insight" && t("insightDetails")}
             </div>
           </div>
         );

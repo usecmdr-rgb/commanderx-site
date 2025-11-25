@@ -14,10 +14,10 @@ const tiers = [
   {
     name: "Basic",
     price: "€29.99",
-    subtitle: "Get started with Xi.",
+    subtitle: "Get started with Sync.",
     badge: "Best for individuals",
     features: [
-      "Includes Xi",
+      "Includes Sync",
       "Smart email parsing",
       "Basic task automation",
       "Daily summaries",
@@ -29,13 +29,13 @@ const tiers = [
   {
     name: "Advanced",
     price: "€79.99",
-    subtitle: "Unlock Alpha and Mu.",
+    subtitle: "Unlock Aloha and Studio.",
     badge: "Most popular",
     features: [
-      "Includes Xi + Alpha + Mu",
+      "Includes Sync + Aloha + Studio",
       "Full inbox management",
       "Calendar optimization & smart scheduling",
-      "Data & analytics via Mu",
+      "Data & analytics via Studio",
       "Multi-account support",
       "Priority triage & smart reminders",
     ],
@@ -44,10 +44,10 @@ const tiers = [
   {
     name: "Elite",
     price: "€129.99",
-    subtitle: "Everything, plus Beta.",
+    subtitle: "Everything, plus Insight.",
     badge: "For teams & agencies",
     features: [
-      "Includes all agents (Xi, Alpha, Mu, Beta)",
+      "Includes all agents (Sync, Aloha, Studio, Insight)",
       "Company-wide analytics & reporting",
       "High-frequency automations",
       "Receptionist / call routing options",
@@ -60,28 +60,28 @@ const tiers = [
 
 const agentMatrix = [
   {
-    agent: "Xi",
+    agent: "Sync",
     description: "Foundation layer — baseline automations.",
     basic: true,
     advanced: true,
     elite: true,
   },
   {
-    agent: "Alpha",
+    agent: "Aloha",
     description: "Deep Gmail + Calendar assistant.",
     basic: false,
     advanced: true,
     elite: true,
   },
   {
-    agent: "Mu",
+    agent: "Studio",
     description: "Data & analytics automation.",
     basic: false,
     advanced: true,
     elite: true,
   },
   {
-    agent: "Beta",
+    agent: "Insight",
     description: "Full brain + multi-agent orchestration.",
     basic: false,
     advanced: false,
@@ -113,7 +113,7 @@ export default function PricingSection() {
           Pricing that grows with your agents
         </h2>
         <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-          Start with Xi, then unlock Alpha, Mu, and Beta as you move from
+          Start with Sync, then unlock Aloha, Studio, and Insight as you move from
           Basic to Advanced to Elite tiers.
         </p>
       </div>
@@ -176,8 +176,8 @@ export default function PricingSection() {
           Agent access per tier
         </h3>
         <p className="text-xs md:text-sm text-muted-foreground text-center max-w-3xl mx-auto">
-          This chart clearly shows which agent is included in which tier. Xi is included in
-          all tiers, Alpha and Mu start at Advanced, and Beta is Elite only.
+          This chart clearly shows which agent is included in which tier. Sync is included in
+          all tiers, Aloha and Studio start at Advanced, and Insight is Elite only.
         </p>
 
         <div className="overflow-x-auto rounded-2xl border bg-background">

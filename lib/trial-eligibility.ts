@@ -38,12 +38,12 @@ export async function hasEmailUsedTrial(email: string): Promise<boolean> {
   const supabase = getSupabaseServerClient();
   const normalizedEmail = normalizeEmail(email);
 
-  // Check if any profile (including soft-deleted) has used a trial with this email
-  // We check deleted_at IS NULL OR deleted_at IS NOT NULL to include soft-deleted accounts
+  // First, try to find profiles by normalized email
+  // We include soft-deleted accounts to prevent trial reuse
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("has_used_trial, email_normalized")
-    .or(`email_normalized.eq.${normalizedEmail},email_normalized.is.null`)
+    .select("has_used_trial, email_normalized, id")
+    .eq("email_normalized", normalizedEmail)
     .limit(10); // Get multiple in case of duplicates
 
   if (error) {
@@ -53,21 +53,14 @@ export async function hasEmailUsedTrial(email: string): Promise<boolean> {
   }
 
   // Check if any profile with this normalized email has used a trial
-  // Also check profiles where email_normalized might not be set yet
   for (const profile of profiles || []) {
-    // If email_normalized matches OR if it's null (legacy data), check has_used_trial
-    if (
-      profile.email_normalized === normalizedEmail ||
-      profile.email_normalized === null
-    ) {
-      if (profile.has_used_trial === true) {
-        return true;
-      }
+    if (profile.has_used_trial === true) {
+      return true;
     }
   }
 
   // Also check by getting user from auth and matching by user ID
-  // This handles cases where email_normalized might not be set
+  // This handles cases where email_normalized might not be set yet (legacy data)
   try {
     const { data: authUsers } = await supabase.auth.admin.listUsers();
     const matchingUser = authUsers.users.find(

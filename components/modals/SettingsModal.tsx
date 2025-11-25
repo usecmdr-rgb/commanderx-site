@@ -28,7 +28,7 @@ const SettingsModal = () => {
   return (
     <Modal
       title="Workspace settings"
-      description="Customize theme, Xi alert colors, and notification stubs."
+      description="Customize theme, Sync alert colors, and notification stubs."
       open={showSettingsModal}
       onClose={() => setShowSettingsModal(false)}
       size="lg"
@@ -56,7 +56,7 @@ const SettingsModal = () => {
         </section>
         <section>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Xi alert colors
+            Sync alert colors
           </h3>
           <div className="mt-3 space-y-4">
             {alertCategories.map((category) => (

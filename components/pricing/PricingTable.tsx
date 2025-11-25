@@ -4,11 +4,12 @@
 // and a clean chart that shows which agent is included in which tier.
 
 import { useState, useMemo } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, AlertCircle } from "lucide-react";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { useAppState } from "@/context/AppStateContext";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { agents } from "@/lib/data";
 import { BASE_PRICES, formatPrice } from "@/lib/currency";
 
@@ -45,6 +46,9 @@ export default function PricingTable() {
   const [trialStarted, setTrialStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslation();
+  
+  // Get trial status to determine if user can start a trial
+  const { hasUsedTrial, isOnTrial, isTrialExpired, canStartTrial, loading: trialStatusLoading } = useTrialStatus();
 
   const tiers = useMemo(() => {
     const syncAgent = agents.find(a => a.key === "sync");
@@ -134,6 +138,17 @@ export default function PricingTable() {
       return;
     }
 
+    // Check if user has already used trial (client-side check, but server enforces)
+    if (hasUsedTrial) {
+      setError("You have already used your free trial. Please choose a paid plan to continue.");
+      return;
+    }
+
+    if (isOnTrial) {
+      setError("You already have an active trial.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -150,6 +165,7 @@ export default function PricingTable() {
       }
 
       // Start trial with Basic tier (default)
+      // Server will enforce one-time trial rule
       const response = await fetch("/api/trial/start", {
         method: "POST",
         headers: {
@@ -157,14 +173,19 @@ export default function PricingTable() {
         },
         body: JSON.stringify({
           tier: "basic",
-          userId: session.user.id,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to start trial");
+        // Handle specific error codes
+        if (data.code === "TRIAL_ALREADY_USED") {
+          setError(data.message || "You have already used your free trial. Please choose a paid plan to continue.");
+        } else {
+          setError(data.error || "Failed to start trial");
+        }
+        return;
       }
 
       setTrialStarted(true);
@@ -284,12 +305,33 @@ export default function PricingTable() {
               {t("trialStartedDescription")}
             </p>
           </div>
+        ) : hasUsedTrial && !trialStatusLoading ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-center dark:border-amber-800 dark:bg-amber-900/20 max-w-md">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                Trial Already Used
+              </p>
+            </div>
+            <p className="text-xs text-amber-600 dark:text-amber-500">
+              You have already used your free trial. Please choose a paid plan to continue using CommanderX.
+            </p>
+          </div>
+        ) : isOnTrial && !trialStatusLoading ? (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 text-center dark:border-blue-800 dark:bg-blue-900/20 max-w-md">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+              ✨ You're currently on a free trial
+            </p>
+            <p className="mt-1 text-xs text-blue-600 dark:text-blue-500">
+              Your trial is active. Choose a plan to continue after it ends.
+            </p>
+          </div>
         ) : (
           <>
             <Button
               onClick={handleStartTrial}
-              disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              disabled={loading || trialStatusLoading || !canStartTrial}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 disabled:opacity-50"
             >
               {loading
                 ? t("startingTrial")
@@ -298,11 +340,15 @@ export default function PricingTable() {
                   : t("signInToStartTrial")}
             </Button>
             {error && (
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 dark:border-red-800 dark:bg-red-900/20 max-w-md">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
             )}
-            <p className="text-xs text-muted-foreground text-center max-w-md">
-              {t("trialNote")}
-            </p>
+            {!hasUsedTrial && (
+              <p className="text-xs text-muted-foreground text-center max-w-md">
+                {t("trialNote")}
+              </p>
+            )}
           </>
         )}
       </div>

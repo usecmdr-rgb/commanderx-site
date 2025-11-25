@@ -27,20 +27,41 @@ import {
 export async function GET(request: NextRequest) {
   try {
     // Authenticate user - throws if not authenticated
+    // User can only access their own subscription data
     const user = await requireAuthFromRequest(request);
-    const userId = user.id; // Use authenticated user's ID
+    const userId = user.id;
+    const userEmail = user.email;
 
     const supabase = getSupabaseServerClient();
 
     // Get user profile with subscription info
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("subscription_tier, subscription_status, stripe_customer_id, stripe_subscription_id")
+      .select("subscription_tier, subscription_status, stripe_customer_id, stripe_subscription_id, trial_ends_at, has_used_trial")
       .eq("id", userId)
       .single();
 
     if (profileError || !profile) {
       return createErrorResponse("User profile not found", 404, profileError);
+    }
+
+    // ============================================
+    // TRIAL EXPIRATION CHECK
+    // ============================================
+    // If user is on a trial, check if it has expired
+    // This ensures expired trials are automatically transitioned
+    if (
+      profile.subscription_tier === "trial" ||
+      profile.subscription_status === "trialing"
+    ) {
+      const trialExpired = await isTrialExpired(userId);
+      if (trialExpired) {
+        // Automatically expire the trial
+        await expireTrial(userId);
+        // Update profile reference for response
+        profile.subscription_tier = "trial_expired";
+        profile.subscription_status = "expired";
+      }
     }
 
     // If no Stripe customer, return basic info
@@ -107,6 +128,12 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Get user email for trial eligibility check
+    const userEmail = user.email;
+    const hasUsedTrial = userEmail
+      ? await hasEmailUsedTrial(userEmail)
+      : profile.has_used_trial || false;
+
     return NextResponse.json({
       subscription: {
         tier: profile.subscription_tier || subscription?.metadata?.tier || null,
@@ -117,9 +144,13 @@ export async function GET(request: NextRequest) {
         cancelAtPeriodEnd: subscription?.cancel_at_period_end || false,
         trialEnd: subscription?.trial_end
           ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
+          : profile.trial_ends_at || null,
       },
       paymentMethod: paymentMethodInfo,
+      trial: {
+        hasUsedTrial,
+        isExpired: profile.subscription_tier === "trial_expired",
+      },
     });
   } catch (error: any) {
     // Handle authentication errors

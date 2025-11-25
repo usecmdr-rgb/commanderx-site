@@ -41,7 +41,17 @@ export const translations = {
     mediaTweaksCompleted: "Media tweaks completed",
     betaInsightsGenerated: "Beta has generated this many insights",
     
-    // Agent descriptions
+    // Agent descriptions (new names)
+    alohaDescription: "Answers calls, books appointments, and keeps calendars tidy",
+    alohaDetails: "Answers calls, sets appointments, and syncs your calendars automatically.",
+    syncDescription: "Drafts replies, prioritizes inboxes, and syncs schedules",
+    syncDetails: "Triages Gmail, drafts replies, tags priorities, and mirrors email actions to Calendar.",
+    studioDescription: "Tunes images, crops, overlays slogans, and polishes reels",
+    studioDetails: "Tweaks media without changing the source--filters, zoom, light crop, and text overlays.",
+    insightDescription: "Rolls up every signal into clean, actionable insight",
+    insightDetails: "Combines every signal into daily, weekly, or monthly business intelligence.",
+    
+    // Legacy agent descriptions (kept for backward compatibility)
     alphaDescription: "Answers calls, books appointments, and keeps calendars tidy",
     alphaDetails: "Answers calls, sets appointments, and syncs your calendars automatically.",
     xiDescription: "Drafts replies, prioritizes inboxes, and syncs schedules",
@@ -270,6 +280,16 @@ export const translations = {
     invoices: "Facturas",
     mediaTweaksCompleted: "Ajustes de medios completados",
     betaInsightsGenerated: "Beta ha generado esta cantidad de información",
+    // Agent descriptions (new names)
+    alohaDescription: "Responde llamadas, reserva citas y mantiene los calendarios ordenados",
+    alohaDetails: "Responde llamadas, programa citas y sincroniza tus calendarios automáticamente.",
+    syncDescription: "Redacta respuestas, prioriza bandejas de entrada y sincroniza horarios",
+    syncDetails: "Clasifica Gmail, redacta respuestas, etiqueta prioridades y refleja acciones de correo en el Calendario.",
+    studioDescription: "Ajusta imágenes, recorta, superpone eslóganes y pule reels",
+    studioDetails: "Ajusta medios sin cambiar la fuente: filtros, zoom, recorte ligero y superposiciones de texto.",
+    insightDescription: "Consolida cada señal en información clara y accionable",
+    insightDetails: "Combina cada señal en inteligencia empresarial diaria, semanal o mensual.",
+    // Legacy agent descriptions (kept for backward compatibility)
     alphaDescription: "Responde llamadas, reserva citas y mantiene los calendarios ordenados",
     alphaDetails: "Responde llamadas, programa citas y sincroniza tus calendarios automáticamente.",
     xiDescription: "Redacta respuestas, prioriza bandejas de entrada y sincroniza horarios",
@@ -466,6 +486,16 @@ export const translations = {
     invoices: "Factures",
     mediaTweaksCompleted: "Ajustements de médias terminés",
     betaInsightsGenerated: "Beta a généré autant d'informations",
+    // Agent descriptions (new names)
+    alohaDescription: "Répond aux appels, réserve des rendez-vous et garde les calendriers organisés",
+    alohaDetails: "Répond aux appels, programme des rendez-vous et synchronise vos calendriers automatiquement.",
+    syncDescription: "Rédige des réponses, priorise les boîtes de réception et synchronise les horaires",
+    syncDetails: "Trie Gmail, rédige des réponses, étiquette les priorités et reflète les actions email dans le Calendrier.",
+    studioDescription: "Ajuste les images, recadre, superpose des slogans et polit les reels",
+    studioDetails: "Ajuste les médias sans changer la source: filtres, zoom, recadrage léger et superpositions de texte.",
+    insightDescription: "Consolide chaque signal en informations claires et exploitables",
+    insightDetails: "Combine chaque signal en intelligence d'entreprise quotidienne, hebdomadaire ou mensuelle.",
+    // Legacy agent descriptions (kept for backward compatibility)
     alphaDescription: "Répond aux appels, réserve des rendez-vous et garde les calendriers organisés",
     alphaDetails: "Répond aux appels, programme des rendez-vous et synchronise vos calendriers automatiquement.",
     xiDescription: "Rédige des réponses, priorise les boîtes de réception et synchronise les horaires",
@@ -662,6 +692,16 @@ export const translations = {
     invoices: "Rechnungen",
     mediaTweaksCompleted: "Medienanpassungen abgeschlossen",
     betaInsightsGenerated: "Beta hat so viele Erkenntnisse generiert",
+    // Agent descriptions (new names)
+    alohaDescription: "Beantwortet Anrufe, bucht Termine und hält Kalender ordentlich",
+    alohaDetails: "Beantwortet Anrufe, plant Termine und synchronisiert Ihre Kalender automatisch.",
+    syncDescription: "Verfasst Antworten, priorisiert Posteingänge und synchronisiert Zeitpläne",
+    syncDetails: "Sortiert Gmail, verfasst Antworten, markiert Prioritäten und spiegelt E-Mail-Aktionen im Kalender wider.",
+    studioDescription: "Passt Bilder an, beschneidet, überlagert Slogans und poliert Reels",
+    studioDetails: "Passt Medien an, ohne die Quelle zu ändern: Filter, Zoom, leichter Zuschnitt und Textüberlagerungen.",
+    insightDescription: "Fasst jedes Signal zu klaren, umsetzbaren Erkenntnissen zusammen",
+    insightDetails: "Kombiniert jedes Signal zu täglicher, wöchentlicher oder monatlicher Geschäftsinformation.",
+    // Legacy agent descriptions (kept for backward compatibility)
     alphaDescription: "Beantwortet Anrufe, bucht Termine und hält Kalender ordentlich",
     alphaDetails: "Beantwortet Anrufe, plant Termine und synchronisiert Ihre Kalender automatisch.",
     xiDescription: "Verfasst Antworten, priorisiert Posteingänge und synchronisiert Zeitpläne",
@@ -858,6 +898,16 @@ export const translations = {
     invoices: "Fatture",
     mediaTweaksCompleted: "Modifiche ai media completate",
     betaInsightsGenerated: "Beta ha generato così tante informazioni",
+    // Agent descriptions (new names)
+    alohaDescription: "Risponde alle chiamate, prenota appuntamenti e mantiene i calendari ordinati",
+    alohaDetails: "Risponde alle chiamate, fissa appuntamenti e sincronizza i tuoi calendari automaticamente.",
+    syncDescription: "Redige risposte, priorizza le caselle di posta e sincronizza gli orari",
+    syncDetails: "Seleziona Gmail, redige risposte, etichetta priorità e riflette le azioni email nel Calendario.",
+    studioDescription: "Regola immagini, ritaglia, sovrappone slogan e lucida i reel",
+    studioDetails: "Regola i media senza cambiare la fonte: filtri, zoom, ritaglio leggero e sovrapposizioni di testo.",
+    insightDescription: "Consolida ogni segnale in informazioni chiare e attuabili",
+    insightDetails: "Combina ogni segnale in intelligence aziendale giornaliera, settimanale o mensile.",
+    // Legacy agent descriptions (kept for backward compatibility)
     alphaDescription: "Risponde alle chiamate, prenota appuntamenti e mantiene i calendari ordinati",
     alphaDetails: "Risponde alle chiamate, fissa appuntamenti e sincronizza i tuoi calendari automaticamente.",
     xiDescription: "Redige risposte, priorizza le caselle di posta e sincronizza gli orari",

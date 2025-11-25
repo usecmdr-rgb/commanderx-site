@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
 import { getModelForTask } from "@/lib/agents/router";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
+import { hasAgentAccess, isAdmin, getUserEmail } from "@/lib/auth";
 import type { AgentKey, TaskType } from "@/lib/agents/config";
 import type {
   ChatCompletionMessageParam,
@@ -236,6 +237,7 @@ export async function POST(req: Request) {
     const accessToken = authHeader?.match(/^Bearer\s+(.*)$/i)?.[1]?.trim();
 
     let effectiveUserId: string | null = null;
+    let userEmail: string | null = null;
 
     // Dev-only bypass: Allow Studio to work without auth in development
     if (!accessToken && process.env.NODE_ENV !== "production") {
@@ -258,6 +260,7 @@ export async function POST(req: Request) {
         }
       } else {
         effectiveUserId = userResult.user.id;
+        userEmail = userResult.user.email || null;
       }
     } else {
       // No access token and in production - return Unauthorized
@@ -279,6 +282,18 @@ export async function POST(req: Request) {
 
     // From this point on, use userId (which is guaranteed to be a string)
     const userId = effectiveUserId;
+
+    // Check if user has access to the requested agent (skip for dev-user)
+    if (userId !== "dev-user") {
+      const hasAccess = await hasAgentAccess(userId, agent, userEmail);
+      
+      if (!hasAccess) {
+        return NextResponse.json(
+          { error: `Access denied. This agent requires a subscription tier that includes ${agent}. Please upgrade your plan to access this feature.` },
+          { status: 403 }
+        );
+      }
+    }
 
     const { data: agentRecord, error: agentLookupError } = await supabase
       .from("agents")

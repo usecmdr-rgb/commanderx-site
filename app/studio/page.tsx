@@ -2380,8 +2380,30 @@ export default function StudioPage() {
 
     try {
       // Get authentication token
-      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
-      const authToken = session?.access_token || (process.env.NODE_ENV !== "production" ? "dev-token" : null);
+      const { data: { session }, error: sessionError } = await supabaseBrowserClient.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+      }
+      
+      // If no session, try to get a fresh one
+      let authToken = session?.access_token || null;
+      
+      if (!authToken) {
+        // Try to refresh if we have a session but no token
+        if (session) {
+          const { data: { session: refreshedSession } } = await supabaseBrowserClient.auth.refreshSession();
+          authToken = refreshedSession?.access_token || null;
+        }
+      }
+      
+      if (!authToken && process.env.NODE_ENV === "production") {
+        setStudioMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Authentication error. Please try logging in again." },
+        ]);
+        return;
+      }
 
       // Convert blob URL to data URL if needed
       let imageDataUrl: string | null = null;

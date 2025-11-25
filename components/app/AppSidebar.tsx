@@ -29,7 +29,7 @@ const AppSidebar = () => {
   const allLinks = [
     syncLink!,
     alohaLink!,
-    { href: "/app", label: t("navDashboard"), icon: LayoutDashboard, isLarge: true, agentKey: null },
+    { href: "/app", label: "Summary", icon: LayoutDashboard, isLarge: true, agentKey: null },
     studioLink!,
     insightLink!,
   ];

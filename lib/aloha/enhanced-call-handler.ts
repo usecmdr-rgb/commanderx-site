@@ -108,7 +108,7 @@ export class EnhancedAlohaCallHandler {
     // Load business name for context
     try {
       const businessContext = await getBusinessContext(this.options.userId);
-      this.businessName = businessContext?.profile.businessName;
+      this.businessName = businessContext?.profile.businessName || undefined;
     } catch (error) {
       console.error("Error loading business context:", error);
     }
@@ -215,7 +215,6 @@ export class EnhancedAlohaCallHandler {
 
     // Check if we should stop TTS (barge-in)
     const shouldStopTTS =
-      intent === "interruption" ||
       scenario.category === "caller_behavior" &&
         (scenario.type === "interruption" || scenario.type === "talking_over");
 

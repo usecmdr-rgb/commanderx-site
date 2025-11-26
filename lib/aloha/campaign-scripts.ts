@@ -48,7 +48,8 @@ export async function generateCampaignScript(
   // Load business context if required and not provided
   let businessContext = context.businessContext;
   if (purposeDef.requiresBusinessContext && !businessContext) {
-    businessContext = await getBusinessContext(context.userId);
+    const fetchedContext = await getBusinessContext(context.userId);
+    businessContext = fetchedContext || undefined;
   }
 
   const businessName = businessContext?.profile.businessName || "[Your Business Name]";
@@ -75,7 +76,7 @@ export async function generateCampaignScript(
 
   // Generate key points based on purpose
   // If purpose_details exists, it becomes the primary key point
-  const keyPoints = generateKeyPoints(context.purpose, businessContext, context.purposeDetails);
+  const keyPoints = generateKeyPoints(context.purpose, businessContext || null, context.purposeDetails);
 
   // Generate questions
   const questions = purposeDef.keyQuestions || [];
@@ -195,7 +196,8 @@ export async function generateCampaignSystemPrompt(
   // Load business context
   let businessContext = context.businessContext;
   if (!businessContext) {
-    businessContext = await getBusinessContext(context.userId);
+    const fetched = await getBusinessContext(context.userId);
+    businessContext = fetched || undefined;
   }
 
   const businessName = businessContext?.profile.businessName || "[Business Name]";

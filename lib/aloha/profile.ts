@@ -6,7 +6,7 @@
 
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 // Legacy voice support - using voice profiles instead
-// import { getDefaultVoice, isValidVoiceId, type AlohaVoice } from "./voices";
+import { getDefaultVoice, isValidVoiceId, type AlohaVoice } from "./voices";
 import {
   DEFAULT_VOICE_KEY,
   getVoiceProfileByKey,

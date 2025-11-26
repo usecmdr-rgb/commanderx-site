@@ -2,8 +2,9 @@ import "./globals.css";
 
 import React from "react";
 import type { Metadata } from "next";
-import Header from "@/components/layout/Header";
 import { AppStateProvider } from "@/context/AppStateContext";
+import { DeviceProvider } from "@/context/DeviceContext";
+import Header from "@/components/layout/Header";
 import AuthModal from "@/components/modals/AuthModal";
 import BusinessInfoModal from "@/components/modals/BusinessInfoModal";
 import BillingModal from "@/components/modals/BillingModal";
@@ -20,24 +21,29 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-device="desktop">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
       </head>
       <body>
         <SupabaseProvider>
-          <AppStateProvider>
-            <Header />
-            <DataRetentionBanner />
-            <main className="mx-auto min-h-screen max-w-6xl px-4 pb-12 sm:pb-16 pt-16 sm:pt-20 sm:px-6 lg:px-8 overflow-x-hidden">
-              {children}
-            </main>
-            <AuthModal />
-            <BusinessInfoModal />
-            <BillingModal />
-            <SettingsModal />
-            <TermsModal />
-          </AppStateProvider>
+          <DeviceProvider>
+            <AppStateProvider>
+              <Header />
+              <DataRetentionBanner />
+              <main
+                className="site-main mx-auto min-h-screen max-w-6xl px-4 pb-12 sm:pb-16 sm:px-6 lg:px-8 overflow-x-hidden"
+                style={{ paddingTop: "var(--page-top-padding, 5rem)" }}
+              >
+                {children}
+              </main>
+              <AuthModal />
+              <BusinessInfoModal />
+              <BillingModal />
+              <SettingsModal />
+              <TermsModal />
+            </AppStateProvider>
+          </DeviceProvider>
         </SupabaseProvider>
       </body>
     </html>

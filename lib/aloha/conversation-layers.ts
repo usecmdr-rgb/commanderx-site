@@ -27,6 +27,7 @@ import {
   type CommunicationState,
   type STTMetadata,
 } from "./communication-resilience";
+import { trackQuestionAsked, trackQuestionAnswered } from "./conversation-state";
 import {
   createConversationState,
   markGreetingDone,
@@ -53,7 +54,7 @@ export interface CallerInput {
 }
 
 export interface LayerProcessingOptions {
-  callType: "inbound" | "outbound";
+  callType?: "inbound" | "outbound";
   callerRushed?: boolean;
   purposeDelivered?: boolean;
   conversationContext?: Record<string, any>;

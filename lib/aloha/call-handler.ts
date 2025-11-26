@@ -13,7 +13,7 @@
  */
 
 import { CallResponseHandler, type CallContext } from "./filler-speech";
-import { getAlohaVoice, getAlohaDisplayName } from "./profile";
+import { getAlohaVoice, getAlohaDisplayName, getAlohaVoiceProfile } from "./profile";
 import { enhanceConversation } from "./conversation";
 import { generateSpeech, streamSpeech } from "./tts";
 import { generateResponse, type ConversationContext } from "./response-generator";
@@ -190,21 +190,13 @@ export class AlohaCallHandler {
         response = await llmGenerator(sttText);
       }
 
-      // Build conversation context for response generation
-      const context: ConversationContext = {
-        agentName: this.context.displayName,
-        businessName: conversationContext?.businessName,
-        campaignReason: conversationContext?.campaignReason,
-        phone: conversationContext?.phone,
-        conversationState: conversationContext?.conversationState || "middle",
-        ...conversationContext,
-      };
-
-      // Apply response generation layer: fallback phrases + voice shaping
-      response = generateResponse(response, context, {
-        useFallback: true,
-        applyVoiceShaping: this.options.enableConversationEnhancement,
-      });
+      // Apply legacy conversation enhancement
+      if (this.options.enableConversationEnhancement) {
+        response = enhanceConversation(response, {
+          addBackchannels: true,
+          addPauses: true,
+        });
+      }
     }
 
     // Apply legacy conversation enhancement if not using new layers

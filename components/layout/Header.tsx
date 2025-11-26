@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
@@ -10,12 +9,14 @@ import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
 import { useAppState } from "@/context/AppStateContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDevice } from "@/context/DeviceContext";
 
 const Header = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { openAuthModal, isAuthenticated } = useAppState();
   const t = useTranslation();
+  const { isDesktop } = useDevice();
   const [hoveredButton, setHoveredButton] = useState<"signup" | "login" | null>(null);
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -122,109 +123,136 @@ const Header = () => {
     });
   }, [hoveredNav]);
 
+  useEffect(() => {
+    if (isDesktop) {
+      setMobileMenuOpen(false);
+    }
+  }, [isDesktop]);
+
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-3 sm:px-6">
-          {/* Mobile menu button */}
-          <button
-            aria-label="Toggle menu"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 active:bg-slate-100 dark:active:bg-slate-800 rounded-lg transition-colors relative z-50 flex-shrink-0 touch-manipulation"
-            type="button"
-          >
-            {mobileMenuOpen ? <X size={24} className="pointer-events-none" /> : <Menu size={24} className="pointer-events-none" />}
-          </button>
+        <div className="mx-auto w-full max-w-6xl px-3 sm:px-6">
+          <div className="relative flex h-16 items-center justify-between">
+            {/* Mobile menu button */}
+            <button
+              aria-label="Toggle menu"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 active:bg-slate-100 dark:active:bg-slate-800 rounded-lg transition-colors relative z-50 flex-shrink-0 touch-manipulation"
+              type="button"
+            >
+              {mobileMenuOpen ? <X size={24} className="pointer-events-none" /> : <Menu size={24} className="pointer-events-none" />}
+            </button>
 
           {/* Desktop navigation */}
-          <nav
-            ref={navContainerRef}
-            className="hidden md:flex relative items-center space-x-[10px] text-sm font-medium"
-            onMouseLeave={() => setHoveredNav(null)}
-          >
-            {/* Hover bubble for nav */}
-            {hoveredNav && (
-              <div
-                className="absolute top-0 bottom-0 rounded-full bg-slate-900 dark:bg-white"
-                style={{
-                  left: `${navSliderStyle.left}px`,
-                  width: `${navSliderStyle.width}px`,
-                }}
-              />
-            )}
-            {navItems.map((item) => (
-              <button
-                key={item.href}
-                ref={(el) => {
-                  navRefs.current[item.href] = el;
-                }}
-                onClick={() => handleAppClick(item.href)}
-                onMouseEnter={() => setHoveredNav(item.href)}
-                className={`relative z-10 rounded-full px-4 py-2 transition ${
-                  hoveredNav === item.href
-                    ? "text-white dark:text-slate-900"
-                    : "text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Logo - centered on mobile, absolute on desktop */}
-          <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 z-10 max-w-[calc(100%-120px)] md:max-w-none">
-            <AnimatedLogo />
-          </div>
-
-          {/* Right side controls */}
-          <div className="flex items-center space-x-1 h-full flex-shrink-0">
-            <div className="flex items-center">
-              <ThemeToggle />
-            </div>
-            <div className="hidden sm:flex items-center">
-              <LanguageSelector />
-            </div>
-            {!isAuthenticated && (
-              <div
-                ref={containerRef}
-                className="hidden sm:flex relative items-center space-x-1.5 text-sm font-medium"
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                {/* Sliding bubble */}
+            <nav
+              ref={navContainerRef}
+            className="hidden lg:flex relative items-center space-x-[10px] text-sm font-medium"
+              onMouseLeave={() => setHoveredNav(null)}
+            >
+              {/* Hover bubble for nav */}
+              {hoveredNav && (
                 <div
-                  className="absolute top-0 bottom-0 rounded-full bg-slate-900 dark:bg-white transition-all duration-200 ease-out"
+                  className="absolute top-0 bottom-0 rounded-full bg-slate-900 dark:bg-white"
                   style={{
-                    left: `${sliderStyle.left}px`,
-                    width: `${sliderStyle.width}px`,
+                    left: `${navSliderStyle.left}px`,
+                    width: `${navSliderStyle.width}px`,
                   }}
                 />
+              )}
+              {navItems.map((item) => (
                 <button
-                  ref={signupRef}
-                  onClick={() => openAuthModal("signup")}
-                  onMouseEnter={() => setHoveredButton("signup")}
+                  key={item.href}
+                  ref={(el) => {
+                    navRefs.current[item.href] = el;
+                  }}
+                  onClick={() => handleAppClick(item.href)}
+                  onMouseEnter={() => setHoveredNav(item.href)}
                   className={`relative z-10 rounded-full px-4 py-2 transition ${
-                    hoveredButton === "signup"
+                    hoveredNav === item.href
                       ? "text-white dark:text-slate-900"
                       : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  {t("signUp")}
+                  {item.label}
                 </button>
-                <button
-                  ref={loginRef}
-                  onClick={() => openAuthModal("login")}
-                  onMouseEnter={() => setHoveredButton("login")}
-                  className={`relative z-10 rounded-full px-4 py-2 transition ${
-                    hoveredButton === "login"
-                      ? "text-white dark:text-slate-900"
-                      : "text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  {t("logIn")}
-                </button>
+              ))}
+            </nav>
+
+            {/* Logo - centered on mobile, absolute on desktop */}
+            <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 z-10 max-w-[calc(100%-120px)] md:max-w-none">
+              <AnimatedLogo />
+            </div>
+
+            {/* Right side controls */}
+            <div className="flex items-center space-x-1 h-full flex-shrink-0">
+              <div className="flex items-center">
+                <ThemeToggle />
               </div>
-            )}
-            <UserMenu />
+              <div className="hidden sm:flex items-center">
+                <LanguageSelector />
+              </div>
+              {!isAuthenticated && (
+                <div
+                  ref={containerRef}
+                  className="hidden sm:flex relative items-center space-x-1.5 text-sm font-medium"
+                  onMouseLeave={() => setHoveredButton(null)}
+                >
+                  {/* Sliding bubble */}
+                  <div
+                    className="absolute top-0 bottom-0 rounded-full bg-slate-900 dark:bg-white transition-all duration-200 ease-out"
+                    style={{
+                      left: `${sliderStyle.left}px`,
+                      width: `${sliderStyle.width}px`,
+                    }}
+                  />
+                  <button
+                    ref={signupRef}
+                    onClick={() => openAuthModal("signup")}
+                    onMouseEnter={() => setHoveredButton("signup")}
+                    className={`relative z-10 rounded-full px-4 py-2 transition ${
+                      hoveredButton === "signup"
+                        ? "text-white dark:text-slate-900"
+                        : "text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {t("signUp")}
+                  </button>
+                  <button
+                    ref={loginRef}
+                    onClick={() => openAuthModal("login")}
+                    onMouseEnter={() => setHoveredButton("login")}
+                    className={`relative z-10 rounded-full px-4 py-2 transition ${
+                      hoveredButton === "login"
+                        ? "text-white dark:text-slate-900"
+                        : "text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {t("logIn")}
+                  </button>
+                </div>
+              )}
+              <UserMenu />
+            </div>
+          </div>
+
+          {/* Mobile navigation pills */}
+          <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pb-3 pt-2">
+            <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+              {navItems.map((item) => (
+                <button
+                  key={`mobile-${item.href}`}
+                  onClick={() => handleAppClick(item.href)}
+                  className={`flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold min-h-[48px] touch-manipulation transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:text-base ${
+                    pathname === item.href
+                      ? "bg-slate-900 text-white border-slate-900 shadow-sm dark:bg-white dark:text-slate-900 dark:border-white"
+                      : "bg-white/90 text-slate-700 border-slate-200 shadow-sm dark:bg-slate-900/80 dark:text-slate-100 dark:border-slate-700"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
       </header>
@@ -232,7 +260,7 @@ const Header = () => {
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -240,7 +268,7 @@ const Header = () => {
       {/* Mobile menu drawer */}
       <div
         ref={mobileMenuRef}
-        className={`fixed top-16 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed inset-x-0 top-0 z-50 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-xl max-h-[100vh] overflow-y-auto transform transition-transform duration-300 ease-in-out lg:hidden ${
           mobileMenuOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >

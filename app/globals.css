@@ -4,6 +4,15 @@
 
 :root {
   color-scheme: light;
+  --page-top-padding: 5rem;
+}
+
+html[data-device="tablet"] {
+  --page-top-padding: 6.5rem;
+}
+
+html[data-device="mobile"] {
+  --page-top-padding: 7.5rem;
 }
 
 :root.dark {

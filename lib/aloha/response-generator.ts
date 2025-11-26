@@ -6,10 +6,16 @@
  */
 
 export interface ConversationContext {
-  userId: string;
-  transcript: string;
+  userId?: string;
+  transcript?: string;
   businessContext?: any;
   callContext?: any;
+  responseTime?: number;
+  conversationState?: string;
+  agentName?: string;
+  businessName?: any;
+  campaignReason?: any;
+  phone?: any;
 }
 
 /**

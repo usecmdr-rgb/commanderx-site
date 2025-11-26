@@ -82,7 +82,7 @@ export default function AnimatedLogo() {
   }, [cControls, xControls, wordControls]);
 
   return (
-    <Link href="/" className="flex items-center">
+    <Link href="/" className="flex items-center md:pointer-events-auto pointer-events-auto">
       <div className="relative inline-flex items-center font-semibold tracking-tight text-[1.755rem] text-brand-accent dark:text-slate-100">
         {/* C */}
         <motion.span

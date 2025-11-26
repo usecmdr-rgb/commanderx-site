@@ -125,14 +125,15 @@ const Header = () => {
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-3 sm:px-6">
           {/* Mobile menu button */}
           <button
             aria-label="Toggle menu"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+            className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 active:bg-slate-100 dark:active:bg-slate-800 rounded-lg transition-colors relative z-50 flex-shrink-0 touch-manipulation"
+            type="button"
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X size={24} className="pointer-events-none" /> : <Menu size={24} className="pointer-events-none" />}
           </button>
 
           {/* Desktop navigation */}
@@ -171,12 +172,12 @@ const Header = () => {
           </nav>
 
           {/* Logo - centered on mobile, absolute on desktop */}
-          <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0">
+          <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 z-10 max-w-[calc(100%-120px)] md:max-w-none">
             <AnimatedLogo />
           </div>
 
           {/* Right side controls */}
-          <div className="flex items-center space-x-1 h-full">
+          <div className="flex items-center space-x-1 h-full flex-shrink-0">
             <div className="flex items-center">
               <ThemeToggle />
             </div>
@@ -239,7 +240,7 @@ const Header = () => {
       {/* Mobile menu drawer */}
       <div
         ref={mobileMenuRef}
-        className={`fixed top-16 left-0 right-0 z-40 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed top-16 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out md:hidden ${
           mobileMenuOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -248,7 +249,7 @@ const Header = () => {
             <button
               key={item.href}
               onClick={() => handleAppClick(item.href)}
-              className={`w-full text-left px-4 py-3 rounded-lg text-base font-medium transition ${
+              className={`w-full text-left px-4 py-3.5 min-h-[44px] rounded-lg text-base font-medium transition touch-manipulation active:opacity-80 ${
                 pathname === item.href
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                   : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -265,7 +266,7 @@ const Header = () => {
                   openAuthModal("signup");
                   setMobileMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-3 rounded-lg text-base font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                className="w-full text-left px-4 py-3.5 min-h-[44px] rounded-lg text-base font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 touch-manipulation active:opacity-80"
               >
                 {t("signUp")}
               </button>
@@ -274,7 +275,7 @@ const Header = () => {
                   openAuthModal("login");
                   setMobileMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-3 rounded-lg text-base font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="w-full text-left px-4 py-3.5 min-h-[44px] rounded-lg text-base font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 touch-manipulation active:opacity-80"
               >
                 {t("logIn")}
               </button>

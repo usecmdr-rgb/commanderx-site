@@ -206,16 +206,11 @@ const Header = () => {
 
   // Memoize handleAppClick to avoid recreating on every render
   const handleAppClick = useCallback((href: string) => {
-    // Allow /dashboard navigation even when unauthenticated (shows preview mode)
-    // Only block /app routes when unauthenticated
-    if (href.startsWith("/app") && !href.startsWith("/dashboard") && !isAuthenticated) {
-      openAuthModal("login");
-      setMobileMenuOpen(false);
-      return;
-    }
+    // Allow /dashboard and /app navigation even when unauthenticated (shows preview mode)
+    // Both routes should be accessible to unauthenticated users
     router.push(href as any);
     setMobileMenuOpen(false);
-  }, [isAuthenticated, openAuthModal, router]);
+  }, [router]);
 
   // Memoize auth button handlers
   const handleSignupClick = useCallback(() => {

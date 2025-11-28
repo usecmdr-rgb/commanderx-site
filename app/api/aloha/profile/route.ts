@@ -6,7 +6,8 @@ import {
   DEFAULT_VOICE_KEY,
   type AlohaVoiceKey,
 } from "@/lib/aloha/voice-profiles";
-import { getAlohaProfile, updateAlohaProfile } from "@/lib/aloha/profile";
+import { getAlohaProfile, updateAlohaProfile, getAlohaSelfName } from "@/lib/aloha/profile";
+import { regenerateAlohaVoicePack } from "@/lib/aloha/voice-pack";
 
 /**
  * GET /api/aloha/profile
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
  * 
  * Body:
  * - display_name?: string
+ * - aloha_self_name?: string | null (custom name the agent calls itself, empty string = use default "Aloha")
  * - voice_key?: AlohaVoiceKey (one of the 4 voice profiles)
  */
 export async function PATCH(request: NextRequest) {
@@ -50,12 +52,14 @@ export async function PATCH(request: NextRequest) {
     const userId = user.id;
 
     const body = await request.json();
-    const { display_name, voice_key } = body;
+    const { display_name, aloha_self_name, voice_key } = body;
 
     // Validate inputs
     const updates: {
       display_name?: string;
+      aloha_self_name?: string | null;
       voice_key?: AlohaVoiceKey;
+      voice_pack_url?: string | null;
     } = {};
 
     if (display_name !== undefined) {
@@ -66,6 +70,14 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updates.display_name = display_name.trim();
+    }
+
+    if (aloha_self_name !== undefined) {
+      // Normalize: empty string or whitespace-only = null (use default "Aloha")
+      const normalizedSelfName = typeof aloha_self_name === "string" 
+        ? (aloha_self_name.trim() || null)
+        : null;
+      updates.aloha_self_name = normalizedSelfName;
     }
 
     if (voice_key !== undefined) {
@@ -91,6 +103,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Update profile first
     const updatedProfile = await updateAlohaProfile(userId, updates);
 
     if (!updatedProfile) {
@@ -100,7 +113,46 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, profile: updatedProfile });
+    // If aloha_self_name was updated, regenerate voice pack
+    let voicePackData: { audioBase64: string; contentType: string } | null = null;
+    if (aloha_self_name !== undefined) {
+      try {
+        // Get effective self-name (normalized)
+        const effectiveSelfName = updatedProfile.aloha_self_name?.trim() || "Aloha";
+        
+        // Regenerate voice pack
+        voicePackData = await regenerateAlohaVoicePack(userId, effectiveSelfName);
+        
+        if (voicePackData) {
+          // Create data URL for the voice pack
+          const dataUrl = `data:${voicePackData.contentType};base64,${voicePackData.audioBase64}`;
+          
+          // Update profile with voice pack URL (storing as data URL for now)
+          // In production, you might want to upload to cloud storage and store the URL
+          await updateAlohaProfile(userId, {
+            voice_pack_url: dataUrl,
+          });
+        } else {
+          console.warn("Voice pack regeneration failed, but profile was updated");
+        }
+      } catch (voicePackError: any) {
+        // Log error but don't fail the request - profile was already updated
+        console.error("Error regenerating voice pack:", voicePackError);
+        // Continue without failing - the previous voice pack will still work
+      }
+    }
+
+    // Fetch updated profile (in case voice_pack_url was updated)
+    const finalProfile = await getAlohaProfile(userId);
+
+    return NextResponse.json({
+      ok: true,
+      profile: finalProfile,
+      voicePack: voicePackData ? {
+        audioBase64: voicePackData.audioBase64,
+        contentType: voicePackData.contentType,
+      } : undefined,
+    });
   } catch (error: any) {
     console.error("Error in PATCH /api/aloha/profile:", error);
     return NextResponse.json(

@@ -69,6 +69,138 @@ export async function GET(request: NextRequest) {
     };
 
     if (profileError) {
+      // Handle missing column error (42703 = undefined column)
+      if (profileError.code === '42703' && profileError.message?.includes('has_used_trial')) {
+        console.warn("has_used_trial column missing, defaulting to false. Please run migrations.");
+        // Try again without has_used_trial
+        const { data: fallbackProfile } = await supabase
+          .from("profiles")
+          .select("subscription_tier, subscription_status, stripe_customer_id, stripe_subscription_id, trial_ends_at")
+          .eq("id", userId)
+          .single();
+        
+        if (!fallbackProfile) {
+          return buildDefaultResponse();
+        }
+        
+        // Continue with fallback profile (has_used_trial will default to false)
+        const hasUsedTrial = userEmail ? await hasEmailUsedTrial(userEmail) : false;
+        const retentionStatus = await getDataRetentionStatus(userId);
+        
+        // Handle trial expiration check
+        if (
+          (fallbackProfile.subscription_tier === "trial" || fallbackProfile.subscription_tier === "trial_expired") ||
+          fallbackProfile.subscription_status === "trialing"
+        ) {
+          const trialExpired = await isTrialExpired(userId);
+          if (trialExpired) {
+            await expireTrial(userId);
+            fallbackProfile.subscription_tier = "trial_expired";
+            fallbackProfile.subscription_status = "expired";
+          }
+        }
+        
+        // Continue with subscription logic using fallbackProfile
+        // (rest of the function will work with fallbackProfile)
+        const profile = fallbackProfile as typeof fallbackProfile & { has_used_trial?: boolean };
+        profile.has_used_trial = false;
+        
+        // Continue with existing logic below...
+        if (!profile.stripe_customer_id) {
+          return NextResponse.json({
+            subscription: {
+              tier: profile.subscription_tier || null,
+              status: profile.subscription_status || null,
+              currentPeriodEnd: null,
+              cancelAtPeriodEnd: false,
+            },
+            paymentMethod: null,
+            trial: {
+              hasUsedTrial: hasUsedTrial,
+              isExpired: profile.subscription_tier === "trial_expired",
+            },
+            retention: {
+              isInRetentionWindow: retentionStatus.hasRetentionWindow && !retentionStatus.isExpired,
+              daysRemaining: retentionStatus.daysRemaining,
+              isDataCleared: retentionStatus.isDataCleared,
+              reason: retentionStatus.reason,
+            },
+          });
+        }
+        
+        // Fetch subscription details from Stripe (same as below)
+        let subscription: Stripe.Subscription | null = null;
+        let paymentMethod: Stripe.PaymentMethod | null = null;
+
+        if (profile.stripe_subscription_id) {
+          try {
+            subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id, {
+              expand: ["default_payment_method"],
+            });
+
+            if (subscription.default_payment_method) {
+              const pm = subscription.default_payment_method;
+              if (typeof pm === "string") {
+                paymentMethod = await stripe.paymentMethods.retrieve(pm);
+              } else {
+                paymentMethod = pm as Stripe.PaymentMethod;
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching Stripe subscription:", error);
+          }
+        }
+
+        if (!paymentMethod && profile.stripe_customer_id) {
+          try {
+            const customer = await stripe.customers.retrieve(profile.stripe_customer_id);
+            if (typeof customer !== "string" && !customer.deleted && customer.invoice_settings?.default_payment_method) {
+              const pmId = customer.invoice_settings.default_payment_method;
+              if (typeof pmId === "string") {
+                paymentMethod = await stripe.paymentMethods.retrieve(pmId);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching default payment method:", error);
+          }
+        }
+
+        let paymentMethodInfo = null;
+        if (paymentMethod && paymentMethod.type === "card" && paymentMethod.card) {
+          paymentMethodInfo = {
+            brand: paymentMethod.card.brand,
+            last4: paymentMethod.card.last4,
+            expMonth: paymentMethod.card.exp_month,
+            expYear: paymentMethod.card.exp_year,
+          };
+        }
+
+        return NextResponse.json({
+          subscription: {
+            tier: profile.subscription_tier || subscription?.metadata?.tier || null,
+            status: subscription?.status || profile.subscription_status || null,
+            currentPeriodEnd: subscription?.current_period_end
+              ? new Date(subscription.current_period_end * 1000).toISOString()
+              : null,
+            cancelAtPeriodEnd: subscription?.cancel_at_period_end || false,
+            trialEnd: subscription?.trial_end
+              ? new Date(subscription.trial_end * 1000).toISOString()
+              : profile.trial_ends_at || null,
+          },
+          paymentMethod: paymentMethodInfo,
+          trial: {
+            hasUsedTrial: hasUsedTrial,
+            isExpired: profile.subscription_tier === "trial_expired",
+          },
+          retention: {
+            isInRetentionWindow: retentionStatus.hasRetentionWindow && !retentionStatus.isExpired,
+            daysRemaining: retentionStatus.daysRemaining,
+            isDataCleared: retentionStatus.isDataCleared,
+            reason: retentionStatus.reason,
+          },
+        });
+      }
+      
       console.warn("No profile found for user, returning default subscription state", {
         userId,
         code: profileError.code,
@@ -166,7 +298,7 @@ export async function GET(request: NextRequest) {
     // Get trial eligibility check (userEmail already declared above)
     const hasUsedTrial = userEmail
       ? await hasEmailUsedTrial(userEmail)
-      : profile.has_used_trial || false;
+      : (profile.has_used_trial ?? false);
 
     // Get data retention status
     const retentionStatus = await getDataRetentionStatus(userId);

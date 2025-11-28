@@ -27,11 +27,69 @@ export async function GET(request: Request) {
     const supabase = getSupabaseServerClient();
 
     // Get user's account mode and activation timestamp
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("has_used_trial, trial_started_at, trial_ends_at, subscription_tier, subscription_status")
       .eq("id", userId)
       .single();
+
+    if (profileError) {
+      // Handle missing column error (42703 = undefined column)
+      if (profileError.code === '42703' && profileError.message?.includes('has_used_trial')) {
+        console.warn("has_used_trial column missing, defaulting to false. Please run migrations.");
+        // Try again without has_used_trial
+        const { data: fallbackProfile } = await supabase
+          .from("profiles")
+          .select("trial_started_at, trial_ends_at, subscription_tier, subscription_status")
+          .eq("id", userId)
+          .single();
+        
+        if (!fallbackProfile) {
+          return NextResponse.json({ ok: true, data: [] });
+        }
+        
+        const userRow: DbUserRow = {
+          has_used_trial: false, // Default to false if column doesn't exist
+          trial_started_at: fallbackProfile.trial_started_at,
+          trial_ends_at: fallbackProfile.trial_ends_at,
+          subscription_tier: fallbackProfile.subscription_tier,
+          subscription_status: fallbackProfile.subscription_status,
+          subscription: null,
+        };
+        
+        const accountMode = getAccountMode(userRow);
+        const activationTimestamp = getActivationTimestamp(userRow);
+        
+        // In preview mode, return empty stats
+        if (accountMode === 'preview') {
+          return NextResponse.json({ ok: true, data: [] });
+        }
+        
+        // For other modes, continue with stats query
+        let query = supabase
+          .from("agent_stats_daily")
+          .select("*")
+          .order("date", { ascending: false });
+        
+        if (activationTimestamp) {
+          const activationDate = new Date(activationTimestamp);
+          const activationDateStr = activationDate.toISOString().split('T')[0];
+          query = query.gte("date", activationDateStr);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching agent stats:", error);
+          return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+        }
+        
+        return NextResponse.json({ ok: true, data: data || [] });
+      }
+      
+      // For other errors, return empty stats
+      return NextResponse.json({ ok: true, data: [] });
+    }
 
     if (!profile) {
       // No profile, return empty stats (preview mode)
@@ -48,7 +106,7 @@ export async function GET(request: Request) {
       .single();
 
     const userRow: DbUserRow = {
-      has_used_trial: profile.has_used_trial,
+      has_used_trial: profile.has_used_trial ?? false,
       trial_started_at: profile.trial_started_at,
       trial_ends_at: profile.trial_ends_at,
       subscription_tier: profile.subscription_tier,

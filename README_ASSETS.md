@@ -86,3 +86,4 @@ Favicon and OG image references are configured in `app/layout.tsx`:
 - Black background (#000000) with white (#FFFFFF) logo
 - All assets are vector-based for maximum quality
 
+

@@ -12,6 +12,7 @@ import { useAgentAccess } from "@/hooks/useAgentAccess";
 import { useAccountMode } from "@/hooks/useAccountMode";
 import PreviewBanner from "@/components/agent/PreviewBanner";
 import TrialExpiredBanner from "@/components/agent/TrialExpiredBanner";
+import { TestOpenAIButton } from "@/components/app/TestOpenAIButton";
 import type { AgentKey } from "@/types";
 import { formatMoney as formatCurrency } from "@/lib/currency";
 
@@ -465,6 +466,9 @@ export default function DashboardPage() {
         formatTime={formatTime}
         formatMoney={formatMoney}
       />
+      
+      {/* Test OpenAI backend connection - only visible to admins or in dev mode */}
+      <TestOpenAIButton />
     </div>
   );
 }

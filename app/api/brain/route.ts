@@ -7,7 +7,7 @@ import { hasAgentAccess, isAdmin, getUserEmail } from "@/lib/auth";
 import { hasActiveAccess } from "@/lib/subscription/trial";
 import { getBusinessContext } from "@/lib/business-context";
 import { logKnowledgeGap } from "@/lib/knowledge-gap-logger";
-import { getAlohaDisplayName } from "@/lib/aloha/profile";
+import { getAlohaDisplayName, getAlohaSelfName } from "@/lib/aloha/profile";
 import { getLanguageFromLocale } from "@/lib/localization";
 import type { AgentKey, TaskType } from "@/lib/agents/config";
 import type { ScenarioContext } from "@/lib/aloha/scenario-detection";
@@ -620,15 +620,15 @@ export async function POST(req: Request) {
     
     // For Aloha agent, inject the user-configured display name
     if (agent === "aloha" && userId !== "dev-user") {
-      const alohaDisplayName = await getAlohaDisplayName(userId);
-      // Replace "ALOHA" references with the configured display name
-      systemPrompt = systemPrompt.replace(/ALOHA/g, alohaDisplayName.toUpperCase());
-      systemPrompt = systemPrompt.replace(/Aloha/g, alohaDisplayName);
-      // Update introduction instructions to use display name
+      const alohaSelfName = await getAlohaSelfName(userId);
+      // Replace "ALOHA" references with the configured self-name (what the agent calls itself)
+      systemPrompt = systemPrompt.replace(/ALOHA/g, alohaSelfName.toUpperCase());
+      systemPrompt = systemPrompt.replace(/Aloha/g, alohaSelfName);
+      // Update introduction instructions to use self-name
       if (businessContext?.profile.businessName) {
-        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaDisplayName}" instead of "Aloha". For example: "Hi, this is ${alohaDisplayName} from ${businessContext.profile.businessName}. How can I help you today?"`;
+        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaSelfName}" instead of "Aloha". For example: "Hi, this is ${alohaSelfName} from ${businessContext.profile.businessName}. How can I help you today?"`;
       } else {
-        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaDisplayName}" instead of "Aloha".`;
+        systemPrompt += `\n\nIMPORTANT: When introducing yourself, use your configured name "${alohaSelfName}" instead of "Aloha".`;
       }
     }
     
@@ -686,11 +686,11 @@ export async function POST(req: Request) {
           });
         }
         if (businessInfo.length > 0) {
-          // Get Aloha display name for context
-          const alohaDisplayName = userId !== "dev-user" 
-            ? await getAlohaDisplayName(userId) 
+          // Get Aloha self-name for context (what the agent calls itself)
+          const alohaSelfName = userId !== "dev-user" 
+            ? await getAlohaSelfName(userId) 
             : "Aloha";
-          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this information to answer questions accurately and provide helpful responses. Remember to introduce yourself as "${alohaDisplayName}" when speaking to callers.`;
+          systemPrompt += `\n\n[BUSINESS CONTEXT]\n${businessInfo.join("\n")}\n\nUse this information to answer questions accurately and provide helpful responses. Remember to introduce yourself as "${alohaSelfName}" when speaking to callers.`;
         }
 
         // Add contact context if available

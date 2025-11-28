@@ -41,6 +41,7 @@ export default function AlohaSettingsPage() {
   
   // Voice settings
   const [displayName, setDisplayName] = useState("");
+  const [alohaSelfName, setAlohaSelfName] = useState("");
   const [selectedVoiceKey, setSelectedVoiceKey] = useState<AlohaVoiceKey>(DEFAULT_VOICE_KEY);
   const [previewingVoiceKey, setPreviewingVoiceKey] = useState<AlohaVoiceKey | null>(null);
   const [voicePreviewSources, setVoicePreviewSources] = useState<VoicePreviewSourcesMap>({});
@@ -65,7 +66,9 @@ export default function AlohaSettingsPage() {
 
   const voiceProfiles = useMemo(() => getAllVoiceProfiles(), []);
   const trimmedDisplayName = displayName.trim();
-  const previewName = trimmedDisplayName || "Aloha";
+  const trimmedSelfName = alohaSelfName.trim();
+  // Use self-name if set, otherwise use display name, otherwise default to "Aloha"
+  const previewName = trimmedSelfName || trimmedDisplayName || "Aloha";
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voicePreviewSourcesRef = useRef<VoicePreviewSourcesMap>({});
   const pendingPreviewRequestsRef =
@@ -113,8 +116,62 @@ export default function AlohaSettingsPage() {
       finalizePlayback();
     };
 
+    // Set preload and load the audio
     audio.preload = "auto";
-    await audio.play();
+    
+    try {
+      // Load the audio first
+      audio.load();
+      
+      // Wait for audio to be ready to play
+      await new Promise<void>((resolve, reject) => {
+        const handleCanPlay = () => {
+          audio.removeEventListener("canplaythrough", handleCanPlay);
+          audio.removeEventListener("error", handleError);
+          resolve();
+        };
+        
+        const handleError = () => {
+          audio.removeEventListener("canplaythrough", handleCanPlay);
+          audio.removeEventListener("error", handleError);
+          reject(new Error("Audio failed to load"));
+        };
+        
+        // Check if already ready
+        if (audio.readyState >= 3) { // HAVE_FUTURE_DATA or higher
+          resolve();
+        } else {
+          audio.addEventListener("canplaythrough", handleCanPlay, { once: true });
+          audio.addEventListener("error", handleError, { once: true });
+          
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            audio.removeEventListener("canplaythrough", handleCanPlay);
+            audio.removeEventListener("error", handleError);
+            reject(new Error("Audio loading timeout"));
+          }, 5000);
+        }
+      });
+      
+      // Now attempt to play
+      await audio.play();
+    } catch (playError: any) {
+      console.error("Error playing audio:", playError);
+      
+      // Handle autoplay restrictions
+      if (playError.name === "NotAllowedError" || playError.name === "NotSupportedError") {
+        setError(
+          "Browser blocked audio playback. Please click the preview button again to allow audio."
+        );
+      } else {
+        setError(
+          "Could not play audio. Please check your browser's audio settings and try again."
+        );
+      }
+      
+      finalizePlayback();
+      throw playError;
+    }
   };
 
   const showPreviewToast = useCallback((message: string) => {
@@ -199,8 +256,28 @@ export default function AlohaSettingsPage() {
         signal: controller.signal,
       })
         .then(async (response) => {
+          // Handle aborted requests (status 499)
+          if (response.status === 499) {
+            return;
+          }
+          
+          // Handle empty responses (aborted)
+          if (response.status === 0 || !response.ok) {
+            const data = await response.json().catch(() => null);
+            if (!data) {
+              // Empty or invalid response, likely aborted
+              return;
+            }
+            
+            // Handle structured error response
+            const errorMessage = data?.error?.messageKey
+              ? t(data.error.messageKey)
+              : data?.error?.defaultMessage || data?.error || "Failed to regenerate preview";
+            throw new Error(errorMessage);
+          }
+          
           const data = await response.json();
-          if (!response.ok || !data?.ok || !data.audioBase64) {
+          if (!data?.ok || !data.audioBase64) {
             // Handle structured error response
             const errorMessage = data?.error?.messageKey
               ? t(data.error.messageKey)
@@ -215,7 +292,8 @@ export default function AlohaSettingsPage() {
           updateVoicePreviewSource(voiceKey, normalizedText, blob);
         })
         .catch((requestError) => {
-          if (requestError?.name === "AbortError") {
+          // Silently ignore aborted requests
+          if (requestError?.name === "AbortError" || requestError?.code === "ECONNRESET") {
             return;
           }
           console.error("Voice preview regeneration error:", requestError);
@@ -308,6 +386,7 @@ export default function AlohaSettingsPage() {
           setProfile(profileData.profile);
           const fetchedDisplayName = (profileData.profile.display_name || "Aloha").trim();
           setDisplayName(fetchedDisplayName);
+          setAlohaSelfName(profileData.profile.aloha_self_name || "");
           setSelectedVoiceKey(
             (profileData.profile.voice_key as AlohaVoiceKey) || DEFAULT_VOICE_KEY
           );
@@ -349,6 +428,7 @@ export default function AlohaSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           display_name: trimmedDisplayName,
+          aloha_self_name: alohaSelfName.trim() || null,
           voice_key: selectedVoiceKey,
         }),
       });
@@ -362,6 +442,21 @@ export default function AlohaSettingsPage() {
       if (data.ok && data.profile) {
         setProfile(data.profile);
         setDisplayName(trimmedDisplayName);
+        const newSelfName = data.profile.aloha_self_name || "";
+        setAlohaSelfName(newSelfName);
+        
+        // If voice pack was regenerated, update the preview sources
+        if (data.voicePack) {
+          const blob = base64ToBlob(
+            data.voicePack.audioBase64,
+            data.voicePack.contentType || "audio/mpeg"
+          );
+          // Calculate effective name for preview (use self-name if set, otherwise display name, otherwise "Aloha")
+          const effectiveName = newSelfName.trim() || trimmedDisplayName || "Aloha";
+          // Update preview for the selected voice
+          updateVoicePreviewSource(selectedVoiceKey, getVoicePreviewScript(selectedVoiceKey, effectiveName), blob);
+        }
+        
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       }
@@ -546,14 +641,26 @@ export default function AlohaSettingsPage() {
       ? cacheEntry.playbackUrl
       : `${fallbackUrl}?v=static`;
 
+    // Create audio element
+    const audio = new Audio(playbackUrl);
+    
+    // Set crossOrigin to handle CORS if needed
+    audio.crossOrigin = "anonymous";
+    
     try {
-      await playAudioElement(new Audio(playbackUrl), voiceKey);
+      await playAudioElement(audio, voiceKey);
     } catch (playError: any) {
       console.error("Error playing voice preview:", playError);
+      
+      // If it's an autoplay error, don't clear the previewing state
+      // so user can try again
+      if (playError.name === "NotAllowedError" || playError.name === "NotSupportedError") {
+        // Keep previewing state so user can retry
+        return;
+      }
+      
       setPreviewingVoiceKey(null);
-      setError(
-        "Could not play audio. Please click the preview button again or check your browser's autoplay settings."
-      );
+      // Error message is already set in playAudioElement
     }
   };
 
@@ -824,6 +931,33 @@ export default function AlohaSettingsPage() {
             />
             <p className="text-xs text-slate-500">
               {t("displayNameExample")}
+            </p>
+          </div>
+        </section>
+
+        {/* Self-Name Customization Section */}
+        <section className="rounded-3xl border border-slate-200 bg-white/80 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+          <h2 className="text-xl font-semibold mb-4">Self-Name Customization</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            What should this agent call itself? If left blank, it will continue to refer to itself as &quot;Aloha&quot;.
+          </p>
+          <div className="space-y-2">
+            <label htmlFor="aloha-self-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              What should this agent call itself?
+            </label>
+            <input
+              id="aloha-self-name"
+              type="text"
+              value={alohaSelfName}
+              onChange={(e) => setAlohaSelfName(e.target.value)}
+              placeholder="Aloha"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:border-transparent dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              e.g. Maya, CommanderX Assistant. Leave blank to use &quot;Aloha&quot;.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+              When you save this setting, the voice pack audio will be regenerated with the new self-name.
             </p>
           </div>
         </section>

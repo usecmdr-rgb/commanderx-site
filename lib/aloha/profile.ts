@@ -18,9 +18,11 @@ export interface AlohaProfile {
   id: string;
   user_id: string;
   display_name: string;
+  aloha_self_name?: string | null; // Custom name the agent calls itself (defaults to "Aloha" if empty)
   voice_id: string; // Legacy field, kept for backward compatibility
   voice_key?: AlohaVoiceKey | null; // New field for voice profile selection
   voice_options?: Record<string, any> | null;
+  voice_pack_url?: string | null; // URL to the generated voice pack MP3
   created_at: string;
   updated_at: string;
 }
@@ -119,9 +121,11 @@ export async function updateAlohaProfile(
   userId: string,
   updates: {
     display_name?: string;
+    aloha_self_name?: string | null; // Custom name the agent calls itself
     voice_id?: string; // Legacy field
     voice_key?: AlohaVoiceKey; // New voice profile system
     voice_options?: Record<string, any> | null;
+    voice_pack_url?: string | null; // URL to the generated voice pack MP3
   }
 ): Promise<AlohaProfile | null> {
   const supabase = getSupabaseServerClient();
@@ -214,5 +218,14 @@ export async function getAlohaVoiceProfile(
   const profile = await getAlohaProfile(userId);
   const voiceKey = profile?.voice_key || DEFAULT_VOICE_KEY;
   return getVoiceProfileByKey(voiceKey);
+}
+
+/**
+ * Get effective self-name for Aloha (defaults to "Aloha" if not set)
+ */
+export async function getAlohaSelfName(userId: string): Promise<string> {
+  const profile = await getAlohaProfile(userId);
+  const selfName = profile?.aloha_self_name?.trim();
+  return selfName || "Aloha";
 }
 

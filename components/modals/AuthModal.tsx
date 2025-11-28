@@ -15,6 +15,90 @@ const AuthModal = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to convert Supabase errors to user-friendly messages
+  const getErrorMessage = (error: any, mode: "login" | "signup"): string => {
+    // Handle different error object structures
+    const errorMessage = (
+      error?.message || 
+      error?.error_description || 
+      error?.error || 
+      error?.toString() || 
+      ""
+    ).toLowerCase();
+    const errorCode = error?.status || error?.code || error?.statusCode || "";
+    
+    // Check for configuration errors first (API key, env vars, etc.)
+    if (
+      errorMessage.includes("invalid api key") ||
+      errorMessage.includes("api key") ||
+      errorMessage.includes("configuration") ||
+      errorMessage.includes("missing required") ||
+      errorMessage.includes("environment variable")
+    ) {
+      return mode === "login" 
+        ? "Unable to connect to authentication service. Please try again later."
+        : "Unable to create account. Please try again later.";
+    }
+
+    // Check for authentication errors - wrong email or password
+    if (
+      errorMessage.includes("invalid login credentials") ||
+      errorMessage.includes("invalid email") ||
+      errorMessage.includes("invalid password") ||
+      errorMessage.includes("email not found") ||
+      errorMessage.includes("user not found") ||
+      errorMessage.includes("incorrect password") ||
+      errorMessage.includes("wrong password") ||
+      errorMessage.includes("wrong email") ||
+      errorCode === "invalid_credentials" ||
+      errorCode === "invalid_grant" ||
+      errorCode === 401 ||
+      errorCode === "400" ||
+      String(errorCode).includes("401")
+    ) {
+      return mode === "login" 
+        ? (t("authInvalidEmailOrPassword") || "Wrong email or password")
+        : (t("authFailedToCreateAccount") || "Failed to create account");
+    }
+
+    // Check for email verification errors
+    if (
+      errorMessage.includes("email not confirmed") ||
+      errorMessage.includes("email not verified") ||
+      errorMessage.includes("confirmation")
+    ) {
+      return "Please verify your email address before signing in.";
+    }
+
+    // Check for rate limiting
+    if (
+      errorMessage.includes("too many requests") ||
+      errorMessage.includes("rate limit") ||
+      errorCode === 429 ||
+      String(errorCode).includes("429")
+    ) {
+      return "Too many login attempts. Please wait a moment and try again.";
+    }
+
+    // Check for network errors
+    if (
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch failed") ||
+      errorMessage.includes("connection") ||
+      errorMessage.includes("failed to fetch")
+    ) {
+      return "Network error. Please check your connection and try again.";
+    }
+
+    // Default error messages - always show user-friendly messages for login
+    if (mode === "login") {
+      // For login, default to "wrong email or password" to avoid exposing system details
+      return t("authInvalidEmailOrPassword") || "Wrong email or password";
+    } else {
+      return t("authFailedToCreateAccount") || "Failed to create account. Please try again.";
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!authModalMode) return;
@@ -50,7 +134,11 @@ const AuthModal = () => {
 
         if (!signupRes.ok) {
           const data = await signupRes.json().catch(() => ({}));
-          throw new Error(data.error || t("authFailedToCreateAccount"));
+          const errorMsg = getErrorMessage(
+            { message: data.error, status: signupRes.status },
+            "signup"
+          );
+          throw new Error(errorMsg);
         }
 
         // 2) Establish Supabase session in the browser
@@ -59,7 +147,8 @@ const AuthModal = () => {
           password,
         });
         if (supabaseError) {
-          throw new Error(supabaseError.message || t("authFailedToSignInAfterSignup"));
+          const errorMsg = getErrorMessage(supabaseError, "signup");
+          throw new Error(errorMsg);
         }
       } else {
         // Login: create Supabase session in the browser
@@ -68,7 +157,8 @@ const AuthModal = () => {
           password,
         });
         if (supabaseError) {
-          throw new Error(supabaseError.message || t("authInvalidEmailOrPassword"));
+          const errorMsg = getErrorMessage(supabaseError, "login");
+          throw new Error(errorMsg);
         }
       }
 
@@ -80,7 +170,24 @@ const AuthModal = () => {
       router.push("/app");
     } catch (err: any) {
       console.error("Authentication error:", err);
-      setError(err.message || t("authFailedPleaseTryAgain"));
+      // Errors thrown from our code are already user-friendly messages
+      // But if we catch a raw error, convert it to a user-friendly message
+      const errorMsg = err.message || err.toString();
+      // Check if it's already a user-friendly message (doesn't contain technical terms)
+      const isTechnicalError = 
+        errorMsg.toLowerCase().includes("api key") ||
+        errorMsg.toLowerCase().includes("configuration") ||
+        errorMsg.toLowerCase().includes("invalid_credentials") ||
+        errorMsg.toLowerCase().includes("invalid_grant");
+      
+      if (isTechnicalError || !errorMsg) {
+        // Convert technical error to user-friendly message
+        const friendlyMessage = getErrorMessage(err, authModalMode === "login" ? "login" : "signup");
+        setError(friendlyMessage);
+      } else {
+        // Already a user-friendly message
+        setError(errorMsg);
+      }
     } finally {
       setIsSubmitting(false);
     }

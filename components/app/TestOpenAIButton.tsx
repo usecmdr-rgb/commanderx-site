@@ -1,11 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabaseBrowserClient } from "@/lib/supabaseClient";
+
+// Admin email addresses (matches lib/auth.ts)
+const ADMIN_EMAILS = ["usecmdr@gmail.com"];
 
 export function TestOpenAIButton() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  // Check if component should render (dev mode or admin user)
+  useEffect(() => {
+    const checkAccess = async () => {
+      const isDev = process.env.NODE_ENV !== 'production';
+      
+      // Get user from session
+      let user: { email?: string | null; role?: string } | null = null;
+      try {
+        const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+        if (session?.user?.email) {
+          // Check if user email is in admin list
+          // Since system uses email-based admin, we treat admin emails as role === 'admin'
+          const userIsAdmin = ADMIN_EMAILS.includes(session.user.email.toLowerCase());
+          user = {
+            email: session.user.email,
+            role: userIsAdmin ? 'admin' : undefined
+          };
+        }
+      } catch (err) {
+        console.error("Error checking admin status:", err);
+      }
+
+      // Use exact gating logic as requested
+      const isAdmin = user?.role === 'admin';
+      
+      // Apply guard at component level - entire section disappears for normal users
+      if (!isDev && !isAdmin) {
+        setShouldRender(false);
+        return;
+      }
+      
+      setShouldRender(true);
+    };
+
+    checkAccess();
+  }, []);
+
+  // Don't render if not dev and not admin - nothing remains in DOM
+  if (!shouldRender) {
+    return null;
+  }
 
   async function handleClick() {
     setLoading(true);
@@ -72,6 +119,7 @@ export function TestOpenAIButton() {
     </div>
   );
 }
+
 
 
 

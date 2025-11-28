@@ -51,10 +51,54 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { voiceKey, sampleText } = (await request.json()) as {
-      voiceKey?: string;
-      sampleText?: string;
-    };
+    // Check if request body exists and is readable
+    let body: { voiceKey?: string; sampleText?: string };
+    
+    try {
+      const bodyText = await request.text();
+      
+      // Check if body is empty or aborted
+      if (!bodyText || bodyText.trim().length === 0) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: {
+              code: "EMPTY_REQUEST_BODY",
+              messageKey: "error.emptyRequestBody",
+              defaultMessage: "Request body is empty",
+            },
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Parse JSON with better error handling
+      try {
+        body = JSON.parse(bodyText) as { voiceKey?: string; sampleText?: string };
+      } catch (parseError: any) {
+        console.error("JSON parse error:", parseError, "Body:", bodyText.substring(0, 100));
+        return NextResponse.json(
+          {
+            ok: false,
+            error: {
+              code: "INVALID_JSON",
+              messageKey: "error.invalidJson",
+              defaultMessage: "Invalid JSON in request body",
+            },
+          },
+          { status: 400 }
+        );
+      }
+    } catch (bodyError: any) {
+      // Handle aborted requests or connection errors
+      if (bodyError.name === "AbortError" || bodyError.code === "ECONNRESET") {
+        // Request was aborted, return early without error
+        return new NextResponse(null, { status: 499 }); // 499 = Client Closed Request
+      }
+      throw bodyError;
+    }
+
+    const { voiceKey, sampleText } = body;
 
     if (!voiceKey) {
       return NextResponse.json(
@@ -149,6 +193,12 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error: any) {
+    // Handle aborted requests silently
+    if (error.name === "AbortError" || error.code === "ECONNRESET") {
+      return new NextResponse(null, { status: 499 }); // 499 = Client Closed Request
+    }
+    
+    // Log other errors
     console.error("Error generating voice preview:", error);
     return NextResponse.json(
       {

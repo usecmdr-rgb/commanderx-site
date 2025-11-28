@@ -1,9 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
+import { getAuthenticatedUserFromRequest } from "@/lib/auth-helpers";
+import { isAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
+  // Gate access: only allow in dev mode or for admin users
+  const isDev = process.env.NODE_ENV !== 'production';
+  
+  if (!isDev) {
+    // In production, require authentication and admin check
+    const user = await getAuthenticatedUserFromRequest(req);
+    if (!user?.email) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Unauthorized: Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+    
+    const userIsAdmin = await isAdmin(user.email);
+    if (!userIsAdmin) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Forbidden: Admin access required",
+        },
+        { status: 403 }
+      );
+    }
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

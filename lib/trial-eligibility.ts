@@ -47,6 +47,12 @@ export async function hasEmailUsedTrial(email: string): Promise<boolean> {
     .limit(10); // Get multiple in case of duplicates
 
   if (error) {
+    // Handle missing column error (42703 = undefined column)
+    if (error.code === '42703' && error.message?.includes('has_used_trial')) {
+      console.warn("has_used_trial column missing, defaulting to false. Please run migrations.");
+      // If column doesn't exist, assume no trial has been used
+      return false;
+    }
     console.error("Error checking trial eligibility:", error);
     // Fail closed: if we can't verify, don't allow trial
     return true;
@@ -68,11 +74,21 @@ export async function hasEmailUsedTrial(email: string): Promise<boolean> {
     );
 
     if (matchingUser) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("has_used_trial")
         .eq("id", matchingUser.id)
         .single();
+
+      if (profileError) {
+        // Handle missing column error (42703 = undefined column)
+        if (profileError.code === '42703' && profileError.message?.includes('has_used_trial')) {
+          console.warn("has_used_trial column missing, defaulting to false. Please run migrations.");
+          return false;
+        }
+        // For other errors, fail closed
+        return true;
+      }
 
       if (profile?.has_used_trial === true) {
         return true;
@@ -102,16 +118,41 @@ export async function markTrialAsUsed(
   const normalizedEmail = normalizeEmail(email);
 
   // Update profile with trial usage info
+  const updateData: any = {
+    email_normalized: normalizedEmail,
+  };
+  
+  // Only include has_used_trial and trial_used_at if column exists
+  // We'll try to update, and if it fails due to missing column, we'll log a warning
+  try {
+    updateData.has_used_trial = true;
+    updateData.trial_used_at = new Date().toISOString();
+  } catch (e) {
+    // Ignore - will be caught by the update error
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({
-      has_used_trial: true,
-      trial_used_at: new Date().toISOString(),
-      email_normalized: normalizedEmail,
-    })
+    .update(updateData)
     .eq("id", userId);
 
   if (error) {
+    // Handle missing column error (42703 = undefined column)
+    if (error.code === '42703' && error.message?.includes('has_used_trial')) {
+      console.warn("has_used_trial column missing, updating only email_normalized. Please run migrations.");
+      // Try again without has_used_trial
+      const { error: fallbackError } = await supabase
+        .from("profiles")
+        .update({ email_normalized: normalizedEmail })
+        .eq("id", userId);
+      
+      if (fallbackError) {
+        console.error("Error marking trial as used (fallback):", fallbackError);
+        throw new Error("Failed to record trial usage");
+      }
+      return;
+    }
+    
     console.error("Error marking trial as used:", error);
     throw new Error("Failed to record trial usage");
   }

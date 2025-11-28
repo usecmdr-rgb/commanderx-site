@@ -172,9 +172,11 @@ export interface AlohaProfile {
   id: string; // UUID
   user_id: string; // UUID, references auth.users.id
   display_name: string; // What Aloha calls itself
+  aloha_self_name: string | null; // Custom name the agent calls itself (defaults to "Aloha" if empty)
   voice_id: string; // Legacy: Selected voice ID (kept for backward compatibility)
   voice_key: string | null; // New: Selected voice profile key (one of 4 predefined profiles)
   voice_options: Record<string, any> | null; // Optional cache of available voices
+  voice_pack_url: string | null; // URL to the generated voice pack MP3
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
 }

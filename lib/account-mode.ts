@@ -100,8 +100,38 @@ export async function getAccountModeForUser(userId: string): Promise<AccountMode
     .eq("id", userId)
     .single();
   
-  if (profileError || !profile) {
+  if (profileError) {
+    // Handle missing column error (42703 = undefined column)
+    if (profileError.code === '42703' && profileError.message?.includes('has_used_trial')) {
+      console.warn("has_used_trial column missing, defaulting to false. Please run migrations.");
+      // Return default values if column doesn't exist
+      const { data: fallbackProfile } = await supabase
+        .from("profiles")
+        .select("trial_started_at, trial_ends_at, subscription_tier, subscription_status")
+        .eq("id", userId)
+        .single();
+      
+      if (!fallbackProfile) {
+        return 'preview';
+      }
+      
+      const userRow: DbUserRow = {
+        has_used_trial: false, // Default to false if column doesn't exist
+        trial_started_at: fallbackProfile.trial_started_at,
+        trial_ends_at: fallbackProfile.trial_ends_at,
+        subscription_tier: fallbackProfile.subscription_tier,
+        subscription_status: fallbackProfile.subscription_status,
+        subscription: null,
+      };
+      
+      return getAccountMode(userRow);
+    }
+    
     // If no profile, default to preview
+    return 'preview';
+  }
+  
+  if (!profile) {
     return 'preview';
   }
   
@@ -115,7 +145,7 @@ export async function getAccountModeForUser(userId: string): Promise<AccountMode
     .single();
   
   const userRow: DbUserRow = {
-    has_used_trial: profile.has_used_trial,
+    has_used_trial: profile.has_used_trial ?? false,
     trial_started_at: profile.trial_started_at,
     trial_ends_at: profile.trial_ends_at,
     subscription_tier: profile.subscription_tier,

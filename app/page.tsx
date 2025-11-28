@@ -7,7 +7,6 @@ import type { AgentKey } from "@/types";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AGENT_BY_ID } from "@/lib/config/agents";
 import type { TranslationKey } from "@/lib/translations";
-import { TestOpenAIButton } from "@/components/app/TestOpenAIButton";
 
 const iconMap: Record<AgentKey, JSX.Element> = {
   aloha: <Phone size={22} className="text-white" />,
@@ -86,7 +85,6 @@ export default function HomePage() {
             {t("seeHowWorks")}
           </Link>
         </div>
-        <TestOpenAIButton />
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">

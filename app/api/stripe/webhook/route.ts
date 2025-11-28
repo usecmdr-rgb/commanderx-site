@@ -174,7 +174,22 @@ export async function POST(request: NextRequest) {
           .eq("id", userId);
 
         if (profileError) {
-          console.error("Error updating profile:", profileError);
+          // Handle missing column error (42703 = undefined column)
+          if (profileError.code === '42703' && profileError.message?.includes('has_used_trial')) {
+            console.warn("has_used_trial column missing, updating without it. Please run migrations.");
+            // Remove has_used_trial from update and try again
+            const { has_used_trial, ...fallbackUpdate } = profileUpdate;
+            const { error: fallbackError } = await supabase
+              .from("profiles")
+              .update(fallbackUpdate)
+              .eq("id", userId);
+            
+            if (fallbackError) {
+              console.error("Error updating profile (fallback):", fallbackError);
+            }
+          } else {
+            console.error("Error updating profile:", profileError);
+          }
         }
 
         break;

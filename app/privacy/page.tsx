@@ -1,35 +1,32 @@
 "use client";
 
-import { useTranslation } from "@/hooks/useTranslation";
 import { Shield } from "lucide-react";
 
 export default function PrivacyPage() {
-  const t = useTranslation();
-
   const sections = [
     {
-      title: t("privacySection1Title") || "Information We Collect",
-      content: t("privacySection1Content") || "We collect information that you provide directly to us, such as when you create an account, use our services, or contact us for support. This may include your name, email address, phone number, and any content you upload or create through our services.",
+      title: "Information We Collect",
+      content: "We collect information that you provide directly to us, such as when you create an account, use our services, or contact us for support. This may include your name, email address, phone number, and any content you upload or create through our services.",
     },
     {
-      title: t("privacySection2Title") || "How We Use Your Information",
-      content: t("privacySection2Content") || "We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and communicate with you about products, services, and promotional offers.",
+      title: "How We Use Your Information",
+      content: "We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and communicate with you about products, services, and promotional offers.",
     },
     {
-      title: t("privacySection3Title") || "Data Storage and Security",
-      content: t("privacySection3Content") || "We implement appropriate technical and organizational measures to protect your personal information. Your data is stored securely and we use industry-standard encryption to protect data in transit and at rest.",
+      title: "Data Storage and Security",
+      content: "We implement appropriate technical and organizational measures to protect your personal information. Your data is stored securely and we use industry-standard encryption to protect data in transit and at rest.",
     },
     {
-      title: t("privacySection4Title") || "Third-Party Services",
-      content: t("privacySection4Content") || "We may use third-party services (such as Google, Stripe, and Twilio) to provide certain features. These services have their own privacy policies governing the use of your information.",
+      title: "Third-Party Services",
+      content: "We may use third-party services (such as Google, Stripe, and Twilio) to provide certain features. These services have their own privacy policies governing the use of your information.",
     },
     {
-      title: t("privacySection5Title") || "Your Rights",
-      content: t("privacySection5Content") || "You have the right to access, update, or delete your personal information. You can manage your data through your account settings or by contacting us directly.",
+      title: "Your Rights",
+      content: "You have the right to access, update, or delete your personal information. You can manage your data through your account settings or by contacting us directly.",
     },
     {
-      title: t("privacySection6Title") || "Changes to This Policy",
-      content: t("privacySection6Content") || "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the \"Last updated\" date.",
+      title: "Changes to This Policy",
+      content: "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the \"Last updated\" date.",
     },
   ];
 
@@ -44,14 +41,14 @@ export default function PrivacyPage() {
                 <Shield className="h-6 w-6 text-blue-500" />
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-                {t("privacyPolicyTitle") || "Privacy Policy"}
+                Privacy Policy
               </h1>
             </div>
             <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
-              {t("privacyPolicyDescription") || "Your privacy is important to us. This policy explains how we collect, use, and protect your personal information."}
+              Your privacy is important to us. This policy explains how we collect, use, and protect your personal information.
             </p>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              {t("privacyLastUpdated") || "Last updated: December 2024"}
+              Last updated: December 2024
             </p>
           </div>
         </div>
@@ -79,10 +76,10 @@ export default function PrivacyPage() {
           {/* Contact Section */}
           <div className="mt-12 p-6 sm:p-8 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-slate-200 dark:border-slate-800/50">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
-              {t("privacyContactTitle") || "Contact Us"}
+              Contact Us
             </h2>
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              {t("privacyContactDescription") || "If you have questions about this Privacy Policy or our data practices, please contact us:"}
+              If you have questions about this Privacy Policy or our data practices, please contact us:
             </p>
             <p className="text-base text-slate-600 dark:text-slate-300">
               <strong className="text-slate-900 dark:text-slate-100">Email:</strong>{" "}

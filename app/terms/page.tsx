@@ -39,7 +39,7 @@ export default function TermsPage() {
               {t("termsModalDescription") || "Please review these terms carefully before using OVRSEE."}
             </p>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              {t("termsLastUpdated") || "Last updated: December 2024"}
+              Last updated: December 2024
             </p>
           </div>
         </div>
@@ -71,10 +71,10 @@ export default function TermsPage() {
           {/* Contact Section */}
           <div className="mt-12 p-6 sm:p-8 rounded-xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-slate-200 dark:border-slate-800/50">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
-              {t("termsContactTitle") || "Questions About These Terms?"}
+              Questions About These Terms?
             </h2>
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              {t("termsContactDescription") || "If you have questions about these Terms of Service, please contact us:"}
+              If you have questions about these Terms of Service, please contact us:
             </p>
             <p className="text-base text-slate-600 dark:text-slate-300">
               <strong className="text-slate-900 dark:text-slate-100">Email:</strong>{" "}

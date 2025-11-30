@@ -44,7 +44,7 @@ export default function PrivacyPage() {
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
                 {t("privacyPageTitle")}
               </h1>
-              <p className="text-lg sm:text-xl lg:text-2xl text-slate-600 dark:text-slate-300 font-light leading-relaxed max-w-3xl mx-auto">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-light leading-relaxed max-w-3xl mx-auto">
                 {t("privacyPageDescription")}
               </p>
               <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">

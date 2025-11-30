@@ -13,6 +13,7 @@
 
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 import type { Profile, Subscription } from "@/types/database";
+import { isSuperAdminEmail } from "@/lib/config/superAdmins";
 
 export type AccountMode = 'preview' | 'trial-active' | 'trial-expired' | 'subscribed';
 
@@ -39,19 +40,25 @@ export interface DbUserRow {
  * Determines the account mode for a user based on their database row data.
  * 
  * Logic:
+ * 0. Super admin always gets 'subscribed' mode
  * 1. Paid subscription wins (status = 'active')
  * 2. Trial currently running (trial_ends_at is in the future)
  * 3. Trial was activated before but is no longer active (has_used_trial = true and trial expired)
  * 4. Never started a trial, no subscription (preview mode)
  * 
  * @param userRow - User data from profiles and subscriptions tables
- * @param options - Optional configuration including `now` for testing
+ * @param options - Optional configuration including `now` for testing and `userEmail` for super admin check
  * @returns The account mode for this user
  */
 export function getAccountMode(
   userRow: DbUserRow,
-  options?: { now?: Date }
+  options?: { now?: Date; userEmail?: string | null }
 ): AccountMode {
+  // Check if user is super admin - super admins always get 'subscribed' mode
+  if (options?.userEmail && isSuperAdminEmail(options.userEmail)) {
+    return 'subscribed';
+  }
+
   const now = options?.now ?? new Date();
   
   // Get subscription status (check subscriptions table first, then profiles table)
@@ -88,17 +95,21 @@ export function getAccountMode(
  * Fetches user data from Supabase and returns their account mode.
  * 
  * @param userId - User ID to check
+ * @param userEmail - Optional user email for super admin check
  * @returns The account mode for this user
  */
-export async function getAccountModeForUser(userId: string): Promise<AccountMode> {
+export async function getAccountModeForUser(userId: string, userEmail?: string | null): Promise<AccountMode> {
   const supabase = getSupabaseServerClient();
   
   // Fetch profile data
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("has_used_trial, trial_started_at, trial_ends_at, subscription_tier, subscription_status")
+    .select("has_used_trial, trial_started_at, trial_ends_at, subscription_tier, subscription_status, email")
     .eq("id", userId)
     .single();
+  
+  // Use provided email or fallback to profile email
+  const email = userEmail || profile?.email || null;
   
   if (profileError) {
     // Handle missing column error (42703 = undefined column)
@@ -107,7 +118,7 @@ export async function getAccountModeForUser(userId: string): Promise<AccountMode
       // Return default values if column doesn't exist
       const { data: fallbackProfile } = await supabase
         .from("profiles")
-        .select("trial_started_at, trial_ends_at, subscription_tier, subscription_status")
+        .select("trial_started_at, trial_ends_at, subscription_tier, subscription_status, email")
         .eq("id", userId)
         .single();
       
@@ -124,7 +135,7 @@ export async function getAccountModeForUser(userId: string): Promise<AccountMode
         subscription: null,
       };
       
-      return getAccountMode(userRow);
+      return getAccountMode(userRow, { userEmail: email });
     }
     
     // If no profile, default to preview
@@ -153,7 +164,7 @@ export async function getAccountModeForUser(userId: string): Promise<AccountMode
     subscription: subscription || null,
   };
   
-  return getAccountMode(userRow);
+  return getAccountMode(userRow, { userEmail: email });
 }
 
 /**

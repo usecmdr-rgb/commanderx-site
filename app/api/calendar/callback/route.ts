@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
+import { getOAuthRedirectUri } from "@/lib/oauth-helpers";
 
 const CALENDAR_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.GMAIL_CLIENT_ID || "";
 const CALENDAR_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || "";
-const CALENDAR_REDIRECT_URI = process.env.CALENDAR_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/api/calendar/callback`;
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,15 +14,22 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        new URL(`/sync/calendar?error=${encodeURIComponent(error)}`, request.url)
+        new URL(`/sync?error=${encodeURIComponent(error)}&tab=calendar`, request.url)
       );
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL("/sync/calendar?error=missing_code", request.url)
+        new URL("/sync?error=missing_code&tab=calendar", request.url)
       );
     }
+
+    // Get redirect URI using shared helper to ensure it matches the auth request exactly
+    const cleanRedirectUri = getOAuthRedirectUri(
+      { url: request.url, headers: request.headers },
+      "/api/calendar/callback",
+      "CALENDAR_REDIRECT_URI"
+    );
 
     // Exchange code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
         code,
         client_id: CALENDAR_CLIENT_ID,
         client_secret: CALENDAR_CLIENT_SECRET,
-        redirect_uri: CALENDAR_REDIRECT_URI,
+        redirect_uri: cleanRedirectUri,
         grant_type: "authorization_code",
       }),
     });
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
       const errorData = await tokenResponse.text();
       console.error("Token exchange failed:", errorData);
       return NextResponse.redirect(
-        new URL("/sync/calendar?error=token_exchange_failed", request.url)
+        new URL("/sync?error=token_exchange_failed&tab=calendar", request.url)
       );
     }
 
@@ -69,12 +76,12 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL("/sync/calendar?calendar_connected=true", request.url)
+      new URL("/sync?calendar_connected=true&tab=calendar", request.url)
     );
   } catch (error: any) {
     console.error("Error in Calendar callback:", error);
     return NextResponse.redirect(
-      new URL("/sync/calendar?error=callback_error", request.url)
+      new URL("/sync?error=callback_error&tab=calendar", request.url)
     );
   }
 }

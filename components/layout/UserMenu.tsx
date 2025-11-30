@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Settings, UserRound, Shield } from "lucide-react";
 import { useAppState } from "@/context/AppStateContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAgentAccess } from "@/hooks/useAgentAccess";
 
 type DropdownItem = 
   | { id: "business" | "billing" | "settings"; label: string }
@@ -21,6 +22,7 @@ const UserMenu = () => {
     setShowTermsModal,
   } = useAppState();
   const t = useTranslation();
+  const { isSuperAdmin } = useAgentAccess();
   const [open, setOpen] = useState(false);
   
   const dropdownItems: DropdownItem[] = [
@@ -74,6 +76,14 @@ const UserMenu = () => {
           role="menu"
           aria-label="User menu options"
         >
+          {isSuperAdmin && (
+            <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+              <div className="flex items-center gap-1.5">
+                <Shield size={14} aria-hidden="true" />
+                <span>Dev / Super Admin Account</span>
+              </div>
+            </div>
+          )}
           {dropdownItems.map((item) => (
             <button
               key={item.id}

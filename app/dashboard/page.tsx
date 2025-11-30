@@ -471,9 +471,6 @@ export default function DashboardPage() {
       {timeframe === "today" && !isPreview && (
         <CommandSummaryCard />
       )}
-      
-      {/* Test OpenAI backend connection - only visible to admins or in dev mode */}
-      <TestOpenAIButton />
     </div>
   );
 }

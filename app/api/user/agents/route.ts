@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
-import { getUserAccessibleAgents, isAdmin, getUserEmail } from "@/lib/auth";
+import { getUserAccessibleAgents, isAdmin, isSuperAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,11 +31,13 @@ export async function GET(request: NextRequest) {
     // Get accessible agents
     const accessibleAgents = await getUserAccessibleAgents(userId, userEmail);
     const isUserAdmin = userEmail ? await isAdmin(userEmail) : false;
+    const isUserSuperAdmin = userEmail ? isSuperAdmin(userEmail) : false;
 
     return NextResponse.json({
       ok: true,
       agents: accessibleAgents,
       isAdmin: isUserAdmin,
+      isSuperAdmin: isUserSuperAdmin,
     });
   } catch (error: any) {
     console.error("Error getting user agents:", error);

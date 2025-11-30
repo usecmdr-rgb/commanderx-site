@@ -112,6 +112,36 @@ export interface EmailRecord {
   draft: string;
 }
 
+export interface EmailQueueItem {
+  id: string;
+  user_id: string;
+  gmail_message_id: string;
+  gmail_thread_id: string;
+  gmail_history_id?: string | null;
+  gmail_labels: string[];
+  from_address: string;
+  from_name?: string | null;
+  to_addresses: string[];
+  cc_addresses: string[];
+  bcc_addresses: string[];
+  subject: string;
+  snippet?: string | null;
+  body_html?: string | null;
+  body_text?: string | null;
+  internal_date: string;
+  queue_status: "open" | "snoozed" | "done" | "archived";
+  is_read: boolean;
+  is_starred: boolean;
+  category_id?: string | null;
+  snoozed_until?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  deleted_source?: "ovrsee" | "gmail" | "both" | null;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MediaItem {
   id: string;
   filename: string;

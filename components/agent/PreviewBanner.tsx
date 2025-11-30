@@ -3,6 +3,7 @@
 import { Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAgentAccess } from "@/hooks/useAgentAccess";
 
 interface PreviewBannerProps {
   agentName: string;
@@ -11,6 +12,13 @@ interface PreviewBannerProps {
 
 export default function PreviewBanner({ agentName, requiredTier }: PreviewBannerProps) {
   const t = useTranslation();
+  const { isSuperAdmin } = useAgentAccess();
+  
+  // Don't show preview banner for super admins
+  if (isSuperAdmin) {
+    return null;
+  }
+  
   return (
     <div className="mb-6 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-6 dark:border-amber-600 dark:from-amber-900/20 dark:to-yellow-900/20">
       <div className="flex items-start gap-4">

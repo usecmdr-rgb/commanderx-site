@@ -103,8 +103,17 @@ export async function getTrialStatus(userId: string): Promise<{
  * 
  * Note: Users in retention window may have limited access, but this function
  * checks for full active access (can use all features).
+ * 
+ * Super admins always have active access regardless of subscription status.
  */
-export async function hasActiveAccess(userId: string): Promise<boolean> {
+import { isSuperAdminEmail } from "@/lib/config/superAdmins";
+
+export async function hasActiveAccess(userId: string, userEmail?: string | null): Promise<boolean> {
+  // Check if user is super admin - super admins always have active access
+  if (userEmail && isSuperAdminEmail(userEmail)) {
+    return true;
+  }
+
   const supabase = getSupabaseServerClient();
 
   const { data: subscription } = await supabase

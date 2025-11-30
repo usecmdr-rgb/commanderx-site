@@ -96,8 +96,33 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
         // Subscribe to auth state changes so isAuthenticated stays in sync
         const {
           data: { subscription },
-        } = supabaseBrowserClient.auth.onAuthStateChange((_event, sessionUpdate) => {
+        } = supabaseBrowserClient.auth.onAuthStateChange(async (event, sessionUpdate) => {
+          console.log("[Auth] Auth state changed:", event, !!sessionUpdate);
+          const wasAuthenticated = isAuthenticated;
           setIsAuthenticated(!!sessionUpdate);
+          
+          // If we just signed in, trigger login and ensure profile exists
+          if (event === "SIGNED_IN" && sessionUpdate && !wasAuthenticated) {
+            console.log("[Auth] User signed in, calling login()");
+            
+            // Ensure profile exists (database trigger should create it, but ensure as fallback)
+            if (sessionUpdate.access_token) {
+              try {
+                await fetch("/api/auth/ensure-profile", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${sessionUpdate.access_token}`,
+                  },
+                });
+                console.log("[Auth] Profile ensured after sign-in");
+              } catch (profileError) {
+                console.error("[Auth] Error ensuring profile:", profileError);
+                // Don't block login if profile creation fails
+              }
+            }
+            
+            login();
+          }
         });
         authSubscription = subscription;
       } catch (error) {

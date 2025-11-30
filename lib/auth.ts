@@ -1,7 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 import type { AgentId } from "@/lib/config/agents";
+import { isSuperAdminEmail } from "@/lib/config/superAdmins";
 
-// Admin email addresses
+// Admin email addresses (deprecated - use SUPER_ADMIN_EMAILS from config/superAdmins.ts)
+// Keeping for backward compatibility
 const ADMIN_EMAILS = ["usecmdr@gmail.com"];
 
 // Agent access by tier
@@ -14,18 +16,34 @@ const AGENT_ACCESS_BY_TIER: Record<string, AgentId[]> = {
 };
 
 /**
- * Check if a user email is an admin
+ * Check if a user email is an admin (super admin)
+ * Uses the centralized SUPER_ADMIN_EMAILS config
  */
 export async function isAdmin(email: string | undefined | null): Promise<boolean> {
-  if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  return isSuperAdminEmail(email);
+}
+
+/**
+ * Check if a user email is a super admin
+ * Alias for isAdmin, but more explicit
+ */
+export function isSuperAdmin(email: string | undefined | null): boolean {
+  return isSuperAdminEmail(email);
 }
 
 /**
  * Get user's subscription tier from Supabase
  * Prefers subscriptions table over profiles table
+ * 
+ * Super admins always return "elite" tier regardless of actual subscription
  */
-export async function getUserSubscriptionTier(userId: string): Promise<string | null> {
+export async function getUserSubscriptionTier(userId: string, userEmail?: string | null): Promise<string | null> {
+  // Check if user is super admin - super admins always get elite tier
+  const email = userEmail || await getUserEmail(userId);
+  if (email && isSuperAdminEmail(email)) {
+    return "elite";
+  }
+
   const supabase = getSupabaseServerClient();
   
   // Try subscriptions table first (primary source of truth)
@@ -88,20 +106,20 @@ export async function getUserEmail(userId: string, userEmail?: string | null): P
  * Check if user has access to a specific agent
  */
 export async function hasAgentAccess(userId: string, agentId: AgentId, userEmail?: string | null): Promise<boolean> {
-  // Check if user is admin - admins have access to all agents
+  // Check if user is super admin - super admins have access to all agents
   const email = await getUserEmail(userId, userEmail);
-  if (email && await isAdmin(email)) {
+  if (email && isSuperAdminEmail(email)) {
     return true;
   }
 
-  // Get user's subscription tier
-  const tier = await getUserSubscriptionTier(userId);
+  // Get user's subscription tier (super admins will get "elite" from getUserSubscriptionTier)
+  const tier = await getUserSubscriptionTier(userId, email);
   
   if (!tier) {
     return false; // No active subscription
   }
 
-  // Trial expired users have no access
+  // Trial expired users have no access (unless super admin, which is already handled above)
   if (tier === "trial_expired") {
     return false;
   }
@@ -115,20 +133,20 @@ export async function hasAgentAccess(userId: string, agentId: AgentId, userEmail
  * Get list of agents user has access to
  */
 export async function getUserAccessibleAgents(userId: string, userEmail?: string | null): Promise<AgentId[]> {
-  // Check if user is admin - admins have access to all agents
+  // Check if user is super admin - super admins have access to all agents
   const email = await getUserEmail(userId, userEmail);
-  if (email && await isAdmin(email)) {
+  if (email && isSuperAdminEmail(email)) {
     return ["sync", "aloha", "studio", "insight"];
   }
 
-  // Get user's subscription tier
-  const tier = await getUserSubscriptionTier(userId);
+  // Get user's subscription tier (super admins will get "elite" from getUserSubscriptionTier)
+  const tier = await getUserSubscriptionTier(userId, email);
   
   if (!tier) {
     return []; // No active subscription
   }
 
-  // Trial expired users have no access
+  // Trial expired users have no access (unless super admin, which is already handled above)
   if (tier === "trial_expired") {
     return [];
   }

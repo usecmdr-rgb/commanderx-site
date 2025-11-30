@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Clock, DollarSign } from "lucide-react";
 import { useAppState } from "@/context/AppStateContext";
 import { agents } from "@/lib/data";
@@ -12,9 +12,9 @@ import { useAgentAccess } from "@/hooks/useAgentAccess";
 import { useAccountMode } from "@/hooks/useAccountMode";
 import PreviewBanner from "@/components/agent/PreviewBanner";
 import TrialExpiredBanner from "@/components/agent/TrialExpiredBanner";
-import { TestOpenAIButton } from "@/components/app/TestOpenAIButton";
 import type { AgentKey } from "@/types";
 import { formatMoney as formatCurrency } from "@/lib/currency";
+import { supabaseBrowserClient } from "@/lib/supabaseClient";
 
 import { AGENT_BY_ID } from "@/lib/config/agents";
 
@@ -219,11 +219,74 @@ TimeframeSelector.displayName = "TimeframeSelector";
 export default function DashboardPage() {
   const [timeframe, setTimeframe] = useState<keyof typeof dataByTimeframe>("today");
   const pathname = usePathname();
-  const { businessInfo, language, isAuthenticated } = useAppState();
+  const searchParams = useSearchParams();
+  const { businessInfo, language, isAuthenticated, login } = useAppState();
   const t = useTranslation();
   const { accessibleAgents, isLoading: accessLoading } = useAgentAccess();
   const { stats: agentStats, loading: statsLoading } = useAgentStats();
   const { mode: accountMode, loading: accountModeLoading } = useAccountMode();
+  
+  // Handle OAuth callback - refresh session when landing on /app after OAuth
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      // Check for OAuth callback parameters or hash fragments
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hasOAuthParams = urlParams.has("code") || urlParams.has("error") || 
+                            hashParams.has("access_token") || hashParams.has("error");
+      
+      if (hasOAuthParams) {
+        console.log("[OAuth] Detected OAuth callback, waiting for session...");
+        
+        // Wait for Supabase to process the callback and set cookies
+        // Try multiple times with increasing delays
+        for (let attempt = 0; attempt < 5; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+          
+          const { data: { session }, error: sessionError } = await supabaseBrowserClient.auth.getSession();
+          
+          if (session && !sessionError) {
+            console.log("[OAuth] Session established!");
+            
+            // Ensure profile exists (database trigger should create it, but ensure as fallback)
+            try {
+              const { data: { session: currentSession } } = await supabaseBrowserClient.auth.getSession();
+              if (currentSession?.access_token) {
+                await fetch("/api/auth/ensure-profile", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${currentSession.access_token}`,
+                  },
+                });
+                console.log("[OAuth] Profile ensured");
+              }
+            } catch (profileError) {
+              console.error("[OAuth] Error ensuring profile:", profileError);
+              // Don't block login if profile creation fails
+            }
+            
+            login();
+            
+            // Clean up URL
+            if (window.history.replaceState) {
+              window.history.replaceState({}, "", "/app");
+            }
+            return;
+          }
+        }
+        
+        console.error("[OAuth] Failed to establish session after OAuth callback");
+      } else {
+        // Not an OAuth callback, but check session anyway
+        const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+        if (session && !isAuthenticated) {
+          login();
+        }
+      }
+    };
+    
+    handleOAuthCallback();
+  }, [searchParams, login, isAuthenticated]);
   
   // Reset timeframe to "today" when navigating to dashboard to ensure consistent UI
   useEffect(() => {
@@ -466,9 +529,6 @@ export default function DashboardPage() {
         formatTime={formatTime}
         formatMoney={formatMoney}
       />
-      
-      {/* Test OpenAI backend connection - only visible to admins or in dev mode */}
-      <TestOpenAIButton />
     </div>
   );
 }

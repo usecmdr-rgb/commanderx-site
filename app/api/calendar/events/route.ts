@@ -105,9 +105,10 @@ export async function GET(request: NextRequest) {
     const startDate = request.nextUrl.searchParams.get("start") || new Date().toISOString();
     const endDate = request.nextUrl.searchParams.get("end") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Fetch events from Google Calendar API
+    // Fetch events from Google Calendar API with all necessary fields
+    // Using fields parameter to ensure we get all event details including attendees, location, description, etc.
     const calendarResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${startDate}&timeMax=${endDate}&singleEvents=true&orderBy=startTime`,
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${startDate}&timeMax=${endDate}&singleEvents=true&orderBy=startTime&fields=items(id,summary,description,start,end,location,attendees,created,updated,htmlLink,status,recurrence,recurringEventId)`,
       {
         headers: {
           Authorization: `Bearer ${calendarAccessToken}`,
@@ -151,9 +152,48 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Get open follow-ups from Sync with due_at (suggested calendar events)
+    const { data: syncFollowups } = await supabase
+      .from("followups")
+      .select("id, title, description, due_at, related_email_id")
+      .eq("user_id", userId)
+      .eq("source_agent", "sync")
+      .eq("status", "open")
+      .not("due_at", "is", null)
+      .gte("due_at", startDate)
+      .lte("due_at", endDate);
+
+    // Convert follow-ups to suggested event format
+    const suggestedEvents = (syncFollowups || []).map((followup) => {
+      const dueDate = new Date(followup.due_at);
+      // Default to 1 hour duration for meetings, or end of day for deadlines
+      const isMeeting = followup.title?.toLowerCase().includes("meeting") || 
+                       followup.title?.toLowerCase().includes("call");
+      const endDate = isMeeting 
+        ? new Date(dueDate.getTime() + 60 * 60 * 1000) // 1 hour
+        : new Date(dueDate.getTime() + 30 * 60 * 1000); // 30 min default
+
+      return {
+        id: `followup-${followup.id}`, // Prefix to distinguish from real events
+        summary: followup.title,
+        description: followup.description || followup.title,
+        start: {
+          dateTime: dueDate.toISOString(),
+        },
+        end: {
+          dateTime: endDate.toISOString(),
+        },
+        isSuggested: true, // Flag to indicate this is a suggested event
+        suggestedBy: "sync",
+        followupId: followup.id,
+        relatedEmailId: followup.related_email_id,
+      };
+    });
+
     return NextResponse.json({
       ok: true,
       events: enrichedEvents,
+      suggestedEvents: suggestedEvents || [],
     });
   } catch (error: any) {
     console.error("Error fetching calendar events:", error);

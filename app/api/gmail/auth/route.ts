@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
+import { getOAuthRedirectUri } from "@/lib/oauth-helpers";
 
 // Gmail OAuth configuration
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
@@ -77,45 +78,12 @@ export async function GET(request: NextRequest) {
       userId = userResult.user.id;
     }
 
-    // Construct redirect URI from the request origin to ensure it matches exactly
-    // Try multiple methods to get the origin, prioritizing the actual request origin
-    let origin = request.headers.get("origin");
-    
-    if (!origin) {
-      // Try to get from referer header
-      const referer = request.headers.get("referer");
-      if (referer) {
-        try {
-          const refererUrl = new URL(referer);
-          origin = refererUrl.origin;
-        } catch {
-          // Fallback to extracting from referer string
-          const match = referer.match(/^(https?:\/\/[^\/]+)/);
-          if (match) origin = match[1];
-        }
-      }
-    }
-    
-    // Try to get from the request URL itself
-    if (!origin) {
-      try {
-        const requestUrl = new URL(request.url);
-        origin = requestUrl.origin;
-      } catch {
-        // Ignore
-      }
-    }
-    
-    // Final fallback to environment variable or default (use 3000 as default for Next.js)
-    if (!origin) {
-      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    }
-    
-    // Use explicit redirect URI from env if set, otherwise construct from origin
-    const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;
-    
-    // Ensure redirect URI doesn't have trailing slash (Google is strict about this)
-    const cleanRedirectUri = redirectUri.replace(/\/$/, "").trim();
+    // Get redirect URI using shared helper to ensure consistency
+    const cleanRedirectUri = getOAuthRedirectUri(
+      { url: request.url, headers: request.headers },
+      "/api/gmail/callback",
+      "GMAIL_REDIRECT_URI"
+    );
     
     // Validate redirect URI format
     try {

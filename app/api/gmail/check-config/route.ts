@@ -1,41 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getOAuthRedirectUri } from "@/lib/oauth-helpers";
 
 /**
  * Diagnostic endpoint to check Gmail OAuth configuration
  * This helps identify what's missing or misconfigured
  */
 export async function GET(request: NextRequest) {
-  // Get origin from request, trying multiple methods
-  let origin = request.headers.get("origin");
+  // Get redirect URI using the same helper as auth/callback routes
+  const cleanRedirectUri = getOAuthRedirectUri(
+    { url: request.url, headers: request.headers },
+    "/api/gmail/callback",
+    "GMAIL_REDIRECT_URI"
+  );
   
-  if (!origin) {
-    const referer = request.headers.get("referer");
-    if (referer) {
-      try {
-        const refererUrl = new URL(referer);
-        origin = refererUrl.origin;
-      } catch {
-        const match = referer.match(/^(https?:\/\/[^\/]+)/);
-        if (match) origin = match[1];
-      }
-    }
+  // Get origin for display
+  let origin: string | null = null;
+  try {
+    const requestUrl = new URL(request.url);
+    origin = requestUrl.origin;
+  } catch {
+    origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   }
-  
-  if (!origin) {
-    try {
-      const requestUrl = new URL(request.url);
-      origin = requestUrl.origin;
-    } catch {
-      // Ignore
-    }
-  }
-  
-  if (!origin) {
-    origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  }
-  
-  const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;
-  const cleanRedirectUri = redirectUri.replace(/\/$/, "").trim();
 
   const config = {
     hasClientId: !!process.env.GMAIL_CLIENT_ID,

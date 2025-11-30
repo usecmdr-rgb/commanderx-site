@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           subscription: null,
         };
         
-        const mode = getAccountMode(userRow);
+        const mode = getAccountMode(userRow, { userEmail: user.email || null });
         const activationTimestamp = getActivationTimestamp(userRow);
         
         return NextResponse.json({
@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
       subscription: subscription || null,
     };
 
-    const mode = getAccountMode(userRow);
+    // Pass user email for super admin check
+    const mode = getAccountMode(userRow, { userEmail: user.email || null });
     const activationTimestamp = getActivationTimestamp(userRow);
 
     return NextResponse.json({

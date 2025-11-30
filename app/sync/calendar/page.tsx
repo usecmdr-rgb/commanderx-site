@@ -23,6 +23,10 @@ interface CalendarEvent {
   reminder?: string; // Reminder text
   createdByAloha?: boolean; // Whether this was created by Aloha agent
   alohaCallId?: string; // Reference to the call that created this
+  isSuggested?: boolean; // Whether this is a suggested event from Sync
+  suggestedBy?: string; // Agent that suggested this (e.g., "sync")
+  followupId?: string; // Follow-up ID if this is a suggested event
+  relatedEmailId?: string; // Related email ID if this is from Sync
 }
 
 const CalendarPage = () => {
@@ -30,6 +34,7 @@ const CalendarPage = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [suggestedEvents, setSuggestedEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
@@ -145,8 +150,13 @@ const CalendarPage = () => {
       }
 
       const data = await res.json();
-      if (data.ok && data.events) {
-        setEvents(data.events);
+      if (data.ok) {
+        if (data.events) {
+          setEvents(data.events);
+        }
+        if (data.suggestedEvents) {
+          setSuggestedEvents(data.suggestedEvents);
+        }
       }
     } catch (error) {
       console.error("Error loading calendar events:", error);
@@ -161,6 +171,73 @@ const CalendarPage = () => {
     setMemoText(event.memo || "");
     setReminderText(event.reminder || "");
     setShowEventModal(true);
+  };
+
+  const handleAddToCalendar = async (event: CalendarEvent) => {
+    if (!event.followupId) return;
+
+    try {
+      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+      if (!session?.access_token) return;
+
+      const res = await fetch("/api/calendar/followup-to-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          followupId: event.followupId,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          // Remove from suggested events and reload calendar
+          setSuggestedEvents((prev) => prev.filter((e) => e.id !== event.id));
+          await loadCalendarEvents();
+          setShowEventModal(false);
+        }
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to add event to calendar");
+      }
+    } catch (error) {
+      console.error("Error adding event to calendar:", error);
+      alert("Failed to add event to calendar");
+    }
+  };
+
+  const handleIgnoreSuggested = async (event: CalendarEvent) => {
+    if (!event.followupId) return;
+
+    try {
+      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+      if (!session?.access_token) return;
+
+      // Mark follow-up as completed (ignored)
+      const { error } = await supabaseBrowserClient
+        .from("followups")
+        .update({
+          status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", event.followupId);
+
+      if (error) {
+        console.error("Error ignoring suggested event:", error);
+      }
+
+      // Remove from suggested events
+      setSuggestedEvents((prev) => prev.filter((e) => e.id !== event.id));
+      setShowEventModal(false);
+    } catch (error) {
+      console.error("Error ignoring suggested event:", error);
+      // Still remove from UI even if API call fails
+      setSuggestedEvents((prev) => prev.filter((e) => e.id !== event.id));
+      setShowEventModal(false);
+    }
   };
 
   const handleSaveNotes = async () => {
@@ -221,6 +298,7 @@ const CalendarPage = () => {
 
   const eventsByDate = useMemo(() => {
     const grouped: Record<string, CalendarEvent[]> = {};
+    // Add regular events
     events.forEach((event) => {
       const date = event.start.dateTime || event.start.date;
       if (date) {
@@ -231,8 +309,19 @@ const CalendarPage = () => {
         grouped[dateKey].push(event);
       }
     });
+    // Add suggested events
+    suggestedEvents.forEach((event) => {
+      const date = event.start.dateTime || event.start.date;
+      if (date) {
+        const dateKey = new Date(date).toISOString().split("T")[0];
+        if (!grouped[dateKey]) {
+          grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(event);
+      }
+    });
     return grouped;
-  }, [events]);
+  }, [events, suggestedEvents]);
 
   const monthDays = useMemo(() => {
     const year = selectedDate.getFullYear();
@@ -370,13 +459,16 @@ const CalendarPage = () => {
                             key={event.id}
                             onClick={() => handleEventClick(event)}
                             className={`w-full text-left text-xs px-2 py-1 rounded truncate ${
-                              event.createdByAloha
+                              event.isSuggested
+                                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border border-orange-200 dark:border-orange-800"
+                                : event.createdByAloha
                                 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                                 : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                             } hover:opacity-80`}
-                            title={event.summary}
+                            title={event.summary + (event.isSuggested ? " (Suggested by Sync)" : "")}
                           >
                             {formatEventTime(event)} {event.summary}
+                            {event.isSuggested && " ⚡"}
                           </button>
                         ))}
                         {day.events.length > 3 && (
@@ -439,6 +531,11 @@ const CalendarPage = () => {
                       Created by Aloha
                     </div>
                   )}
+                  {selectedEvent.isSuggested && (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                      Suggested by Sync
+                    </div>
+                  )}
                 </div>
               </div>
               <button
@@ -452,6 +549,29 @@ const CalendarPage = () => {
             {selectedEvent.description && (
               <div className="mb-4 rounded-2xl bg-slate-100/70 p-4 text-sm dark:bg-slate-800/60">
                 <p className="text-slate-700 dark:text-slate-200">{selectedEvent.description}</p>
+              </div>
+            )}
+
+            {/* Suggested Event Confirmation */}
+            {selectedEvent.isSuggested && (
+              <div className="mb-4 rounded-2xl border-2 border-orange-200 bg-orange-50/50 p-4 dark:border-orange-800 dark:bg-orange-900/20">
+                <p className="text-sm font-semibold text-orange-900 dark:text-orange-200 mb-3">
+                  This event was suggested by Sync based on an email. Would you like to add it to your calendar?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleAddToCalendar(selectedEvent)}
+                    className="flex-1 rounded-full bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                  >
+                    Add to Calendar
+                  </button>
+                  <button
+                    onClick={() => handleIgnoreSuggested(selectedEvent)}
+                    className="flex-1 rounded-full border border-orange-300 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
+                  >
+                    Ignore
+                  </button>
+                </div>
               </div>
             )}
 

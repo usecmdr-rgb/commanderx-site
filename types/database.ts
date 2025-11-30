@@ -269,4 +269,78 @@ export interface UserOpenAIKey {
   updated_at: string; // ISO timestamp
 }
 
+/**
+ * Gmail connections table
+ */
+export interface GmailConnection {
+  id: string; // UUID
+  user_id: string; // UUID, references auth.users.id
+  access_token: string;
+  refresh_token: string | null;
+  expires_at: string | null; // ISO timestamp
+  last_history_id: string | null;
+  last_sync_at: string | null; // ISO timestamp
+  sync_status: "idle" | "syncing" | "error";
+  sync_error: string | null;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/**
+ * Email queue table
+ */
+export interface EmailQueue {
+  id: string; // UUID
+  user_id: string; // UUID, references auth.users.id
+  gmail_message_id: string;
+  gmail_thread_id: string;
+  gmail_history_id: string | null;
+  gmail_labels: string[];
+  from_address: string;
+  from_name: string | null;
+  to_addresses: string[];
+  cc_addresses: string[];
+  bcc_addresses: string[];
+  subject: string;
+  snippet: string | null;
+  body_html: string | null;
+  body_text: string | null;
+  internal_date: string; // ISO timestamp
+  queue_status: "open" | "snoozed" | "done" | "archived";
+  is_read: boolean;
+  is_starred: boolean;
+  category_id: string | null;
+  snoozed_until: string | null; // ISO timestamp
+  deleted_at: string | null; // ISO timestamp
+  deleted_by: string | null; // UUID, references auth.users.id
+  deleted_source: "ovrsee" | "gmail" | "both" | null;
+  metadata: Record<string, any>; // JSONB
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/**
+ * Database insert types for Gmail connections
+ */
+export type GmailConnectionInsert = Omit<GmailConnection, "id" | "created_at" | "updated_at">;
+
+/**
+ * Database update types for Gmail connections
+ */
+export type GmailConnectionUpdate = Partial<Omit<GmailConnection, "id" | "user_id" | "created_at">> & {
+  updated_at?: string;
+};
+
+/**
+ * Database insert types for email queue
+ */
+export type EmailQueueInsert = Omit<EmailQueue, "id" | "created_at" | "updated_at">;
+
+/**
+ * Database update types for email queue
+ */
+export type EmailQueueUpdate = Partial<Omit<EmailQueue, "id" | "user_id" | "created_at">> & {
+  updated_at?: string;
+};
+
 

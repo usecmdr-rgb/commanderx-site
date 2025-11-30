@@ -8,13 +8,14 @@ interface AgentAccess {
   hasAccess: boolean;
   isLoading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   accessibleAgents: AgentId[];
 }
 
 // Global cache for access state (persists across page navigations within session)
 const accessCache = {
-  data: null as { accessibleAgents: AgentId[]; isAdmin: boolean; timestamp: number } | null,
-  promise: null as Promise<{ accessibleAgents: AgentId[]; isAdmin: boolean }> | null,
+  data: null as { accessibleAgents: AgentId[]; isAdmin: boolean; isSuperAdmin: boolean; timestamp: number } | null,
+  promise: null as Promise<{ accessibleAgents: AgentId[]; isAdmin: boolean; isSuperAdmin: boolean }> | null,
 };
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
@@ -23,6 +24,7 @@ export function useAgentAccess(agentId?: AgentId): AgentAccess {
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [accessibleAgents, setAccessibleAgents] = useState<AgentId[]>([]);
   const isMountedRef = useRef(true);
 
@@ -43,9 +45,10 @@ export function useAgentAccess(agentId?: AgentId): AgentAccess {
           const cached = accessCache.data;
           setAccessibleAgents(cached.accessibleAgents);
           setIsAdmin(cached.isAdmin);
+          setIsSuperAdmin(cached.isSuperAdmin);
           
           if (agentId) {
-            setHasAccess(cached.isAdmin || cached.accessibleAgents.includes(agentId));
+            setHasAccess(cached.isSuperAdmin || cached.isAdmin || cached.accessibleAgents.includes(agentId));
           } else {
             setHasAccess(true);
           }
@@ -93,14 +96,15 @@ export function useAgentAccess(agentId?: AgentId): AgentAccess {
       }
     }
 
-    function updateState(result: { accessibleAgents: AgentId[]; isAdmin: boolean }) {
+    function updateState(result: { accessibleAgents: AgentId[]; isAdmin: boolean; isSuperAdmin: boolean }) {
       if (!isMountedRef.current) return;
       
       setAccessibleAgents(result.accessibleAgents);
       setIsAdmin(result.isAdmin);
+      setIsSuperAdmin(result.isSuperAdmin);
       
       if (agentId) {
-        setHasAccess(result.isAdmin || result.accessibleAgents.includes(agentId));
+        setHasAccess(result.isSuperAdmin || result.isAdmin || result.accessibleAgents.includes(agentId));
       } else {
         setHasAccess(true);
       }
@@ -110,17 +114,18 @@ export function useAgentAccess(agentId?: AgentId): AgentAccess {
     checkAccess();
   }, [agentId]);
 
-  return { hasAccess, isLoading, isAdmin, accessibleAgents };
+  return { hasAccess, isLoading, isAdmin, isSuperAdmin, accessibleAgents };
 }
 
 async function performAccessCheck(): Promise<{
   accessibleAgents: AgentId[];
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }> {
   const { data: { session } } = await supabaseBrowserClient.auth.getSession();
   
   if (!session) {
-    return { accessibleAgents: [], isAdmin: false };
+    return { accessibleAgents: [], isAdmin: false, isSuperAdmin: false };
   }
 
   const authToken = session.access_token;
@@ -135,10 +140,11 @@ async function performAccessCheck(): Promise<{
     return {
       accessibleAgents: data.agents || [],
       isAdmin: data.isAdmin || false,
+      isSuperAdmin: data.isSuperAdmin || false,
     };
   }
 
-  return { accessibleAgents: [], isAdmin: false };
+  return { accessibleAgents: [], isAdmin: false, isSuperAdmin: false };
 }
 
 async function validateInBackground() {

@@ -84,20 +84,25 @@ This will change the **actual domain** shown in the OAuth redirect:
 
 1. **Prerequisites**: 
    - Supabase Pro plan or higher (custom domains are a paid feature)
-   - A domain you own (e.g., `ovrsee.dev`)
+   - A domain you own (e.g., `ovrsee.ai` or `ovrsee.dev`)
 
-2. **In Supabase Dashboard**:
+2. **Choose Your Custom Domain**:
+   - **Recommended**: Use a subdomain like `auth.ovrsee.ai` for OAuth (keeps your main domain free for your website)
+   - **Alternative**: You can use the root domain `ovrsee.ai` if you prefer, but a subdomain is cleaner
+   - Examples: `auth.ovrsee.ai`, `api.ovrsee.ai`, `login.ovrsee.ai`
+
+3. **In Supabase Dashboard**:
    - Go to **Settings** → **Custom Domains**
-   - Add your custom domain (e.g., `auth.ovrsee.dev`)
-   - Follow the DNS configuration instructions
+   - Add your custom domain (e.g., `auth.ovrsee.ai`)
+   - Follow the DNS configuration instructions (you'll need to add a CNAME record)
    - Wait for DNS verification (can take up to 48 hours)
 
-3. **Update Google Cloud Console**:
+4. **Update Google Cloud Console**:
    - Go to **APIs & Services** → **Credentials**
    - Find your OAuth 2.0 Client ID
    - Update the **Authorized redirect URIs**:
      - Remove: `https://nupxbdbychuqokubresi.supabase.co/auth/v1/callback`
-     - Add: `https://auth.ovrsee.dev/auth/v1/callback` (or your custom domain)
+     - Add: `https://auth.ovrsee.ai/auth/v1/callback` (use your custom domain)
 
 4. **Update Supabase Settings**:
    - Go to **Authentication** → **URL Configuration**
@@ -107,7 +112,7 @@ This will change the **actual domain** shown in the OAuth redirect:
 5. **Update Environment Variables** (if needed):
    - Your `NEXT_PUBLIC_SUPABASE_URL` might need to be updated if Supabase provides a new URL for the custom domain
 
-**Result**: Users will see "You're signing back in to **auth.ovrsee.dev**" instead of the Supabase domain.
+**Result**: Users will see "You're signing back in to **auth.ovrsee.ai**" (or your chosen domain) instead of the Supabase domain.
 
 ### Solution 3: Custom OAuth Implementation (Advanced)
 
@@ -122,8 +127,43 @@ This requires significant code changes and is not recommended unless you have sp
 
 ## Recommended Approach
 
-1. **Immediate**: Update Google Cloud Console OAuth consent screen (Solution 1) - takes 5 minutes
-2. **Long-term**: Set up custom domain in Supabase (Solution 2) - requires paid plan but provides best branding
+1. **Immediate**: Update Google Cloud Console OAuth consent screen (Solution 1) - takes 5 minutes, FREE
+2. **Long-term**: Set up custom domain in Supabase (Solution 2) - requires Supabase Pro plan ($25/month) but provides best branding
+
+## Quick Start - Change OAuth Branding NOW
+
+**To change the domain shown in Google OAuth, you MUST set up a custom domain in Supabase:**
+
+### Step 1: Check Your Supabase Plan
+1. Go to https://supabase.com/dashboard
+2. Check if you have a **Pro plan** or higher
+3. If not, you'll need to upgrade (custom domains are not available on free tier)
+
+### Step 2: Set Up Custom Domain in Supabase
+1. In Supabase Dashboard → **Settings** → **Custom Domains**
+2. Click **"Add Custom Domain"**
+3. Enter your domain:
+   - **Recommended**: `auth.ovrsee.ai` (subdomain for OAuth)
+   - **Alternative**: `ovrsee.ai` (root domain, if you prefer)
+4. Follow DNS configuration instructions:
+   - Add a CNAME record pointing to Supabase's provided hostname
+   - Wait for verification (can take up to 48 hours)
+
+### Step 3: Update Google Cloud Console Redirect URI
+1. Go to https://console.cloud.google.com/
+2. Navigate to **APIs & Services** → **Credentials**
+3. Click on your OAuth 2.0 Client ID
+4. In **Authorized redirect URIs**, update:
+   - **Remove**: `https://nupxbdbychuqokubresi.supabase.co/auth/v1/callback`
+   - **Add**: `https://auth.ovrsee.ai/auth/v1/callback` (use your custom domain - replace with your chosen domain)
+5. Click **Save**
+
+### Step 4: Update Supabase Auth Settings
+1. In Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Update **Site URL** to match your custom domain
+3. Update **Redirect URLs** to include your app URLs
+
+**Result**: Users will now see "You're signing back in to **auth.ovrsee.dev**" instead of the Supabase domain!
 
 ## Verification
 

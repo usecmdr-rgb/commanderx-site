@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 /**
  * Next.js Middleware
@@ -7,14 +8,50 @@ import type { NextRequest } from "next/server";
  * This middleware runs on every request and can:
  * - Add security headers (CSP, HSTS, etc.)
  * - Handle authentication/authorization
+ * - Handle Supabase OAuth callbacks
  * - Rewrite URLs
  * - Redirect requests
  * 
  * Note: Some security headers may also be configured in Cloudflare
  * (see SECURITY.md for Cloudflare configuration details)
  */
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+export async function middleware(request: NextRequest) {
+  // Handle Supabase OAuth callback first
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  if (supabaseUrl && supabaseAnonKey) {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    });
+
+    // This will refresh the session if expired - required for OAuth callbacks
+    // It also processes the OAuth callback and sets the session cookie
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // If we have a user and we're on the app page, ensure session is set
+    if (user && request.nextUrl.pathname === "/app") {
+      // Session is established, continue
+    }
+  }
 
   // ============================================================================
   // Security Headers

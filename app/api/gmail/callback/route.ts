@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
+import { getOAuthRedirectUri } from "@/lib/oauth-helpers";
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
@@ -32,43 +33,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Construct redirect URI from the request origin to ensure it matches exactly
-    // This must match exactly what was used in the auth request
-    let origin = request.headers.get("origin");
-    
-    if (!origin) {
-      // Try to get from referer
-      const referer = request.headers.get("referer");
-      if (referer) {
-        try {
-          const refererUrl = new URL(referer);
-          origin = refererUrl.origin;
-        } catch {
-          const match = referer.match(/^(https?:\/\/[^\/]+)/);
-          if (match) origin = match[1];
-        }
-      }
-    }
-    
-    // Try to get from the request URL itself
-    if (!origin) {
-      try {
-        const requestUrl = new URL(request.url);
-        origin = requestUrl.origin;
-      } catch {
-        // Ignore
-      }
-    }
-    
-    // Final fallback (use 3000 as default for Next.js)
-    if (!origin) {
-      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    }
-    
-    const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;
-    
-    // Ensure redirect URI doesn't have trailing slash (Google is strict about this)
-    const cleanRedirectUri = redirectUri.replace(/\/$/, "").trim();
+    // Get redirect URI using shared helper to ensure it matches the auth request exactly
+    const cleanRedirectUri = getOAuthRedirectUri(
+      { url: request.url, headers: request.headers },
+      "/api/gmail/callback",
+      "GMAIL_REDIRECT_URI"
+    );
 
     // Exchange code for tokens
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -119,6 +89,8 @@ export async function GET(request: NextRequest) {
           access_token,
           refresh_token,
           expires_at: new Date(Date.now() + (expires_in * 1000)).toISOString(),
+          sync_status: "idle",
+          sync_error: null,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: "user_id",
@@ -128,6 +100,9 @@ export async function GET(request: NextRequest) {
         console.error("Error storing Gmail tokens:", dbError);
         // Continue anyway - tokens are valid, user can still use Gmail
         // In dev mode, this is expected if using dev-user
+      } else {
+        // Note: Initial sync will be triggered automatically on next page load
+        // or user can trigger it manually from the UI
       }
     } catch (error) {
       console.error("Error storing Gmail tokens:", error);

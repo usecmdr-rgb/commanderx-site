@@ -341,7 +341,8 @@ export default function PlanAdvisor({ mode = "anonymous", onRecommendationSelect
             {/* Media Generation Volume */}
             <div className="flex-1">
               <label className="block text-xs font-medium mb-1.5">
-                <Image className="h-3 w-3 inline mr-1" />
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image className="h-3 w-3 inline mr-1" aria-hidden="true" />
                 Media Generation Volume
               </label>
               <div className="grid grid-cols-3 gap-2">

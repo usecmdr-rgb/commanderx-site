@@ -140,7 +140,7 @@ export default function InsightScoreWidget({ range = 'daily' }: InsightScoreWidg
     }
 
     fetchScore();
-  }, [range]);
+  }, [range, supabase]);
 
   if (loading) {
     return (

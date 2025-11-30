@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, Mail, Image, BarChart3 } from "lucide-react";
+import { Phone, Mail, Image as ImageIcon, BarChart3 } from "lucide-react";
 import { agents } from "@/lib/data";
 import type { AgentKey } from "@/types";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -9,10 +9,10 @@ import { AGENT_BY_ID } from "@/lib/config/agents";
 import type { TranslationKey } from "@/lib/translations";
 
 const iconMap: Record<AgentKey, JSX.Element> = {
-  aloha: <Phone size={22} className="text-white" />,
-  sync: <Mail size={22} className="text-white" />,
-  studio: <Image size={22} className="text-white" />,
-  insight: <BarChart3 size={22} className="text-white" />,
+  aloha: <Phone size={22} className="text-white" aria-hidden="true" />,
+  sync: <Mail size={22} className="text-white" aria-hidden="true" />,
+  studio: <ImageIcon size={22} className="text-white" aria-hidden="true" />,
+  insight: <BarChart3 size={22} className="text-white" aria-hidden="true" />,
 };
 
 const agentRoleKeyMap: Record<AgentKey, TranslationKey> = {
@@ -66,10 +66,10 @@ export default function HomePage() {
           {t("multiAgentCockpit")}
         </p>
         <h1 className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-semibold leading-tight">
-          {t("delegateTitle")}
+          Delegate calls, inbox, content, and insights to your team of four AI agents.
         </h1>
         <p className="mt-3 sm:mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-300">
-          {t("delegateDescription")}
+          OVRSEE gives small to large teams a unified cockpit where Aloha, Sync, Studio, and Insight work together from one shared memory to save time, automate busywork, and keep workflows running smoothly.
         </p>
         <div className="mt-4 sm:mt-6 flex flex-wrap gap-3">
           <a

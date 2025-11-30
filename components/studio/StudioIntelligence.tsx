@@ -98,7 +98,8 @@ export default function StudioIntelligence() {
           {suggestedAssets.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Image size={16} className="text-slate-600 dark:text-slate-400" />
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image size={16} className="text-slate-600 dark:text-slate-400" aria-hidden="true" />
                 <p className="text-sm font-semibold">Suggested Content</p>
               </div>
               <div className="space-y-2">

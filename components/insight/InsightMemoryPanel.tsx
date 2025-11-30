@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Brain, ChevronDown, ChevronUp, Edit2, Trash2, X, Plus, Target, Users, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { useSupabase } from "@/components/SupabaseProvider";
 import type { InsightMemoryFact, InsightUserGoal, InsightRelationship } from "@/types";
@@ -20,11 +20,7 @@ export default function InsightMemoryPanel({ collapsed: initialCollapsed = false
   const [editingFact, setEditingFact] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
-    loadMemoryData();
-  }, []);
-
-  async function loadMemoryData() {
+  const loadMemoryData = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -122,7 +118,11 @@ export default function InsightMemoryPanel({ collapsed: initialCollapsed = false
     } finally {
       setLoading(false);
     }
-  }
+  }, [supabase]);
+
+  useEffect(() => {
+    loadMemoryData();
+  }, [loadMemoryData]);
 
   async function deleteMemoryFact(id: string) {
     const {

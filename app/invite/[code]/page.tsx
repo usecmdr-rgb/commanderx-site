@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 import { useSupabase } from "@/components/SupabaseProvider";
@@ -19,25 +19,7 @@ export default function InviteAcceptPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error" | "expired" | "already_accepted">("loading");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!code) {
-      setStatus("error");
-      setError("Invalid invite code");
-      setLoading(false);
-      return;
-    }
-
-    // If user is not authenticated, show login prompt
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    // Auto-accept if authenticated
-    handleAccept();
-  }, [code, isAuthenticated]);
-
-  const handleAccept = async () => {
+  const handleAccept = useCallback(async () => {
     if (!code || !isAuthenticated) {
       if (!isAuthenticated) {
         openAuthModal("signup");
@@ -76,7 +58,25 @@ export default function InviteAcceptPage() {
       setAccepting(false);
       setLoading(false);
     }
-  };
+  }, [code, isAuthenticated, openAuthModal, router]);
+
+  useEffect(() => {
+    if (!code) {
+      setStatus("error");
+      setError("Invalid invite code");
+      setLoading(false);
+      return;
+    }
+
+    // If user is not authenticated, show login prompt
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    // Auto-accept if authenticated
+    handleAccept();
+  }, [code, isAuthenticated, handleAccept]);
 
   if (loading) {
     return (

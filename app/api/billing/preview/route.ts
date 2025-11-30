@@ -103,11 +103,11 @@ export async function GET(request: NextRequest) {
         const discountAmount = subtotal - total;
         
         if (discountAmount > 0) {
-          lineItems.push({
-            description: `Discount: ${upcomingInvoice.discount.coupon?.name || "Team discount"}`,
+        lineItems.push({
+          description: `Discount: ${upcomingInvoice.discount.coupon?.name || "Team discount"}`,
             amount: -discountAmount,
             quantity: undefined,
-          });
+        });
         }
       }
 

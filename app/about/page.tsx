@@ -162,7 +162,7 @@ export default function AboutPage() {
                     It connects your calls, inbox, calendar, content, and business signals into a single intelligent system.
                   </p>
                   <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                    It doesn't just answer questions—it monitors what's happening, surfaces what matters, and helps you take the next step with one click.
+                    It doesn&apos;t just answer questions—it monitors what&apos;s happening, surfaces what matters, and helps you take the next step with one click.
                   </p>
                 </div>
                 <div className="pt-4">
@@ -208,7 +208,7 @@ export default function AboutPage() {
               {/* Bottom Left: Who it's for */}
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">Who it's for</h2>
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3">Who it&apos;s for</h2>
                   <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
                     Built for small and midsize teams that:
                   </p>
@@ -228,7 +228,7 @@ export default function AboutPage() {
                 </div>
                 <div className="p-5 sm:p-6 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
                   <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                    If you're a founder, operator, agency, or lean team trying to do more with less, it acts like a Chief of Staff that never sleeps—watching, organizing, and nudging the right actions.
+                    If you&apos;re a founder, operator, agency, or lean team trying to do more with less, it acts like a Chief of Staff that never sleeps—watching, organizing, and nudging the right actions.
                   </p>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function AboutPage() {
               <div className="space-y-6">
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Our philosophy</h2>
                 <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-                  We believe AI shouldn't be a toy bolted onto your tools.
+                  We believe AI shouldn&apos;t be a toy bolted onto your tools.
                 </p>
                 <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                   It should be the nervous system of your workflow:

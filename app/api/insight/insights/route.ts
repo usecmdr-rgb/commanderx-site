@@ -373,8 +373,8 @@ Return ONLY valid JSON matching the InsightResponse interface.`;
       console.error("LLM error, using raw insights:", llmError);
       // Fallback to raw merged insights
       enhancedResponse = {
-        question,
-        generatedAt: new Date().toISOString(),
+      question,
+      generatedAt: new Date().toISOString(),
         keyInsights: rawKeyInsights,
         priorityDecisions: rawPriorityDecisions,
         trends: rawTrends,
@@ -384,7 +384,7 @@ Return ONLY valid JSON matching the InsightResponse interface.`;
           "What are the top priorities right now?",
           "What trends should I watch?",
         ],
-      };
+    };
     }
 
     return NextResponse.json({ ok: true, data: enhancedResponse });

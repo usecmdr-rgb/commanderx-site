@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   Phone, 
   Mail, 
@@ -43,16 +43,7 @@ export default function InsightTimeline({ range, onInsightClick }: InsightTimeli
   const [sourceFilter, setSourceFilter] = useState<InsightSource | "all">("all");
   const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    fetchInsights();
-  }, [range, filter, sourceFilter, isAuthenticated]);
-
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     setLoading(true);
     setError(null);
     setIsUnauthorized(false);
@@ -81,7 +72,16 @@ export default function InsightTimeline({ range, onInsightClick }: InsightTimeli
     } finally {
       setLoading(false);
     }
-  };
+  }, [range, filter, sourceFilter]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    fetchInsights();
+  }, [range, filter, sourceFilter, isAuthenticated, fetchInsights]);
 
   const handleInsightClick = (insight: Insight) => {
     setSelectedInsight(insight);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Trash2, Plus, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ interface SeatRow {
   email?: string;
 }
 
-export default function TeamPricingPage() {
+function TeamPricingContent() {
   const { language } = useAppState();
   const t = useTranslation();
   const searchParams = useSearchParams();
@@ -379,6 +379,21 @@ export default function TeamPricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TeamPricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-6xl mx-auto px-4 py-16">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900"></div>
+          <p className="mt-4 text-sm text-slate-500">Loading team pricing...</p>
+        </div>
+      </div>
+    }>
+      <TeamPricingContent />
+    </Suspense>
   );
 }
 

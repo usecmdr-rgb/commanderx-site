@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-slate-100">
       {/* Hero Section */}
       <div className="border-b border-slate-200 dark:border-slate-700">
         <div className="pt-8 sm:pt-12 pb-8 sm:pb-12">

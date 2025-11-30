@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import LogoIntro from "./LogoIntro";
 import Logo from "./Logo";
+import SettingsMenu from "./SettingsMenu";
 import LanguageSelector from "./LanguageSelector";
 import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
@@ -367,12 +368,7 @@ const Header = () => {
 
             {/* Right side controls */}
             <div className="flex items-center space-x-1 h-full flex-shrink-0">
-              <div className="flex items-center">
-                <ThemeToggle />
-              </div>
-              <div className="hidden sm:flex items-center">
-                <LanguageSelector />
-              </div>
+              <SettingsMenu isAuthenticated={isAuthenticated} />
               {!isAuthenticated && (
                 <AuthButtons
                   hoveredButton={hoveredButton}
@@ -442,8 +438,42 @@ const Header = () => {
             </>
           )}
           <div className="border-t border-slate-200 dark:border-slate-800 my-2" />
-          <div className="px-4 py-2">
-            <LanguageSelector />
+          <div className="px-4 py-2 space-y-2">
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Language
+              </span>
+              <LanguageSelector />
+            </div>
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Theme
+              </span>
+              <ThemeToggle />
+            </div>
+            {!isAuthenticated && (
+              <>
+                <div className="border-t border-slate-200 dark:border-slate-800 my-2" />
+                <button
+                  onClick={() => {
+                    router.push("/privacy");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3.5 min-h-[44px] rounded-lg text-base font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 touch-manipulation active:opacity-80"
+                >
+                  {t("userMenuPrivacy") || "Privacy Policy"}
+                </button>
+                <button
+                  onClick={() => {
+                    router.push("/terms");
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3.5 min-h-[44px] rounded-lg text-base font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 touch-manipulation active:opacity-80"
+                >
+                  {t("userMenuTerms") || "Terms of Service"}
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </div>

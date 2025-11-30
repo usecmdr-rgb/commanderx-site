@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, Mail, Brush, BarChart3 } from "lucide-react";
+import { Phone, Mail, Image, BarChart3 } from "lucide-react";
 import { agents } from "@/lib/data";
 import type { AgentKey } from "@/types";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -11,7 +11,7 @@ import type { TranslationKey } from "@/lib/translations";
 const iconMap: Record<AgentKey, JSX.Element> = {
   aloha: <Phone size={22} className="text-white" />,
   sync: <Mail size={22} className="text-white" />,
-  studio: <Brush size={22} className="text-white" />,
+  studio: <Image size={22} className="text-white" />,
   insight: <BarChart3 size={22} className="text-white" />,
 };
 
@@ -94,7 +94,7 @@ export default function HomePage() {
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Live activity from today</p>
           </div>
         </div>
-        <div className="mt-4 sm:mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-4" role="list">
+        <div className="mt-4 sm:mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-4 items-start" role="list">
           {/* Aloha / Voice */}
           <article className="rounded-3xl border border-slate-200 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 relative flex flex-col" role="listitem">
             {fakeStats.aloha.alerts > 0 && (
@@ -113,12 +113,14 @@ export default function HomePage() {
                 { label: t("appts"), value: fakeStats.aloha.appointments },
                 { label: "Alerts", value: fakeStats.aloha.alerts, alert: fakeStats.aloha.alerts > 0 },
               ].map((item) => (
-                <div key={item.label} className="relative text-center min-w-0 flex flex-col items-center justify-center">
-                  {item.alert && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500 z-10"></span>
-                  )}
+                <div key={item.label} className="relative text-center flex flex-col items-center justify-center min-w-[60px]">
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500 text-center break-words leading-tight px-1">{item.label}</p>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap overflow-visible">{item.value}</p>
+                  <div className="mt-1 flex items-center justify-center gap-1.5">
+                    <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{item.value}</p>
+                    {item.alert && (
+                      <span className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0"></span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -142,14 +144,16 @@ export default function HomePage() {
                 { label: t("invoices"), value: fakeStats.sync.invoices },
                 { label: t("missed"), value: fakeStats.sync.missed, alert: fakeStats.sync.missed > 0 },
               ].map((item) => (
-                <div key={item.label} className="relative text-center min-w-0 flex flex-col items-center justify-center">
-                  {item.alert && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 z-10"></span>
-                  )}
+                <div key={item.label} className="relative text-center flex flex-col items-center justify-center min-w-[60px]">
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500 text-center break-words leading-tight px-1">
                     {item.label}
                   </p>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap overflow-visible">{item.value}</p>
+                  <div className="mt-1 flex items-center justify-center gap-1.5">
+                    <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{item.value}</p>
+                    {item.alert && (
+                      <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -171,18 +175,18 @@ export default function HomePage() {
                 { label: "Impressions", value: fakeStats.studio.impressions.toLocaleString() },
                 { label: "Likes", value: fakeStats.studio.likes },
                 { label: "Reports", value: fakeStats.studio.reports, alert: true },
+                { label: "Today", value: "+1.2K" },
               ].map((item) => (
-                <div key={item.label} className="relative text-center min-w-0 flex flex-col items-center justify-center">
-                  {item.alert && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-500 z-10"></span>
-                  )}
+                <div key={item.label} className="relative text-center flex flex-col items-center justify-center min-w-[60px]">
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500 text-center break-words leading-tight px-1">{item.label}</p>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap overflow-visible">{item.value}</p>
+                  <div className="mt-1 flex items-center justify-center gap-1.5">
+                    <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{item.value}</p>
+                    {item.alert && (
+                      <span className="h-2 w-2 rounded-full bg-violet-500 flex-shrink-0"></span>
+                    )}
+                  </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-1 text-xs text-slate-600 dark:text-slate-400">
-              <span>+1.2K impressions today</span>
             </div>
           </article>
 
@@ -197,10 +201,23 @@ export default function HomePage() {
               <p className="text-xs uppercase tracking-widest text-slate-500 text-center">Insight / Data</p>
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-label="Active"></span>
             </div>
-            <p className="mt-4 text-lg sm:text-xl font-semibold text-slate-900 dark:text-white text-center whitespace-nowrap overflow-visible">{fakeStats.insight.insights}</p>
-            <p className="text-xs text-slate-600 dark:text-slate-400 text-center">{t("betaInsightsGenerated")}</p>
-            <div className="mt-2 flex items-center justify-center gap-1 text-xs text-slate-600 dark:text-slate-400">
-              <span>3 new today</span>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {[
+                { label: "Total", value: fakeStats.insight.insights },
+                { label: "New Today", value: 3, alert: true },
+                { label: "This Week", value: 12 },
+                { label: "Trending", value: 5 },
+              ].map((item) => (
+                <div key={item.label} className="relative text-center flex flex-col items-center justify-center min-w-[60px]">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-widest text-slate-500 text-center break-words leading-tight px-1">{item.label}</p>
+                  <div className="mt-1 flex items-center justify-center gap-1.5">
+                    <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">{item.value}</p>
+                    {item.alert && (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </article>
         </div>

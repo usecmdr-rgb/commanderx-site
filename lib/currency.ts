@@ -24,10 +24,13 @@ const currencyByLanguage: Record<LanguageCode, CurrencyInfo> = {
 };
 
 // Base prices in USD
+// Import from pricing.ts to ensure single source of truth
+import { TIERS } from './pricing';
+
 export const BASE_PRICES = {
-  basic: 29.99,
-  advanced: 79.99,
-  elite: 129.99,
+  basic: TIERS.basic.priceMonthly,
+  advanced: TIERS.advanced.priceMonthly,
+  elite: TIERS.elite.priceMonthly,
 };
 
 /**
@@ -76,6 +79,7 @@ export function formatMoney(amount: number, language: LanguageCode): string {
   // For other currencies, show 2 decimal places
   return `${currency.symbol}${localAmount.toFixed(2)}`;
 }
+
 
 
 

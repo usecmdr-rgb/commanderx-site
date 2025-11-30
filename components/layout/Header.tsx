@@ -73,39 +73,6 @@ const DesktopNav = memo(({
 
 DesktopNav.displayName = "DesktopNav";
 
-// Memoized Mobile Navigation Pills Component
-const MobileNavPills = memo(({ 
-  navItems, 
-  pathname, 
-  onItemClick 
-}: {
-  navItems: Array<{ label: string; href: string }>;
-  pathname: string;
-  onItemClick: (href: string) => void;
-}) => {
-  return (
-    <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 pb-3 pt-2">
-      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        {navItems.map((item) => (
-          <button
-            key={`mobile-${item.href}`}
-            onClick={() => onItemClick(item.href)}
-            aria-current={pathname === item.href ? "page" : undefined}
-            className={`flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold min-h-[48px] touch-manipulation transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:text-base ${
-              pathname === item.href
-                ? "bg-slate-900 text-white border-slate-900 shadow-sm dark:bg-white dark:text-slate-900 dark:border-white"
-                : "bg-white/90 text-slate-700 border-slate-200 shadow-sm dark:bg-slate-900/80 dark:text-slate-100 dark:border-slate-700"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-    </div>
-  );
-});
-
-MobileNavPills.displayName = "MobileNavPills";
 
 // Memoized Auth Buttons Component
 const AuthButtons = memo(({ 
@@ -425,14 +392,6 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Mobile navigation pills - hide on dashboard/app routes */}
-          {!(pathname === "/dashboard" || pathname === "/app" || pathname.startsWith("/app/")) && (
-            <MobileNavPills
-              navItems={navItems}
-              pathname={pathname}
-              onItemClick={handleAppClick}
-            />
-          )}
         </div>
       </header>
 

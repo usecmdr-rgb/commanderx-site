@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "OVRSEE",
+    "slug": "ovrsee-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ovrsee.mobile",
+      "infoPlist": {
+        "NSContactsUsageDescription": "OVRSEE uses your contacts to identify who is calling and manage your call preferences.",
+        "NSUserNotificationsUsageDescription": "OVRSEE uses notifications to alert you about important calls, emails, and agent updates."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      },
+      "package": "com.ovrsee.mobile"
+    },
+    "web": {},
+    "scheme": "ovrsee",
+    "plugins": [
+      "expo-font",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow OVRSEE to access your contacts to identify callers and manage call preferences."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0F172A",
+          "sounds": []
+        }
+      ]
+    ]
+  }
+}

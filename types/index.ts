@@ -229,7 +229,8 @@ export interface Workflow {
 // Insight Types
 export interface InsightRequest {
   question: string;
-  timeframe?: "today" | "week" | "month";
+  timeframe?: "today" | "week" | "month" | "daily" | "weekly" | "monthly";
+  range?: "daily" | "weekly" | "monthly";
 }
 
 export interface InsightResponse {
@@ -262,6 +263,131 @@ export interface InsightResponse {
     rationale: string;
     priority: "high" | "medium" | "low";
   }[];
+  sources?: { type: string; id: string; label: string }[];
+  followUpQuestions?: string[];
+}
+
+// Insight Data Model
+export type InsightSource = 'aloha' | 'sync' | 'studio' | 'insight_agent' | 'system' | 'manual';
+export type InsightCategory = 'productivity' | 'communication' | 'finance' | 'sales' | 'risk' | 'ops' | 'misc';
+export type InsightSeverity = 'info' | 'warning' | 'critical';
+
+export type InsightActionType =
+  | 'draft_email'
+  | 'create_task'
+  | 'create_calendar_event'
+  | 'start_call'
+  | 'open_workflow'
+  | 'open_resource'
+  | 'view_call_log'
+  | 'view_email_thread';
+
+export interface InsightAction {
+  id: string;
+  type: InsightActionType;
+  label: string;
+  description?: string;
+  payload?: any;
+}
+
+export interface Insight {
+  id: string;
+  userId: string;
+  source: InsightSource;
+  category: InsightCategory;
+  severity: InsightSeverity;
+  title: string;
+  description: string;
+  timeRange?: string;
+  tags: string[];
+  actions?: InsightAction[];
+  isRead: boolean;
+  dismissedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, any>;
+}
+
+// Insight Brief Types
+export interface InsightBriefSection {
+  title: string;
+  bulletPoints: string[];
+}
+
+export interface InsightBrief {
+  range: 'daily' | 'weekly' | 'monthly';
+  generatedAt: string;
+  sections: InsightBriefSection[];
+  keyRisks?: string[];
+  priorities?: string[];
+}
+
+// Ask Insight Answer
+export interface AskInsightAnswer {
+  answer: string;
+  sources?: { type: string; id: string; label: string }[];
+  followUpQuestions?: string[];
+}
+
+// Time Range Type
+export type TimeRange = 'daily' | 'weekly' | 'monthly';
+
+// Insight Memory Types
+export type InsightMemoryType = 'preference' | 'pattern' | 'behavior' | 'risk' | 'tag' | 'goal';
+
+export interface InsightMemoryFact {
+  id: string;
+  workspaceId: string;
+  type: InsightMemoryType;
+  key: string;
+  value: Record<string, any>;
+  confidence: number;       // 0..1
+  importanceScore: number;  // 0..100
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InsightGoalStatus = 'active' | 'completed' | 'archived';
+
+export interface InsightUserGoal {
+  id: string;
+  workspaceId: string;
+  goalLabel: string;
+  description?: string;
+  priority: number;         // 1..5
+  status: InsightGoalStatus;
+  dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InsightRelationshipEntityType = 'contact' | 'company' | 'project';
+
+export interface InsightRelationship {
+  id: string;
+  workspaceId: string;
+  entityType: InsightRelationshipEntityType;
+  entityIdentifier: string;
+  displayName?: string;
+  interactionCount: number;
+  sentimentScore?: number;  // -1..1
+  lastContactAt?: string;
+  importanceScore: number;  // 0..100
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Activity Mix Types
+export interface ActivityMixBucket {
+  label: string;
+  calls: number;
+  emails: number;
+}
+
+export interface ActivityMixResponse {
+  range: TimeRange;
+  buckets: ActivityMixBucket[];
 }
 
 // Subscription Types
@@ -288,8 +414,16 @@ export interface TrialInfo {
   isExpired: boolean;
 }
 
+export interface RetentionInfo {
+  isInRetentionWindow: boolean;
+  daysRemaining: number | null;
+  isDataCleared: boolean;
+  reason: "trial_expired" | "paid_canceled" | "paid_paused" | null;
+}
+
 export interface SubscriptionData {
   subscription: SubscriptionInfo;
   paymentMethod: PaymentMethodInfo | null;
   trial?: TrialInfo;
+  retention?: RetentionInfo;
 }

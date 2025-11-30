@@ -38,40 +38,43 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseServerClient();
     const authHeader = request.headers.get("authorization");
     const accessToken = authHeader?.match(/^Bearer\s+(.*)$/i)?.[1]?.trim();
-    const isDevUser = request.headers.get("x-dev-user") === "true";
     const userIdHeader = request.headers.get("x-user-id");
 
-    // Get userId from header if provided, otherwise try to get from auth token
+    // Get userId - require authentication
     let userId: string;
     
+    if (!accessToken || accessToken === "dev-token") {
+      return NextResponse.json(
+        { error: "Unauthorized", details: "Please log in to connect Gmail." },
+        { status: 401 }
+      );
+    }
+
     if (userIdHeader) {
-      // Use userId from header (allows OAuth to proceed even without Supabase session)
-      userId = userIdHeader;
-    } else if ((!accessToken || accessToken === "dev-token" || isDevUser) && process.env.NODE_ENV !== "production") {
-      console.warn("[/api/gmail/auth] No access token found, using dev fallback user in development.");
-      userId = "dev-user";
-    } else if (accessToken && accessToken !== "dev-token") {
+      // Verify the user ID matches the authenticated user
       const { data: userResult, error: userError } = await supabase.auth.getUser(accessToken);
       if (userError || !userResult?.user) {
-        // In production, return Unauthorized. In dev, use fallback.
-        if (process.env.NODE_ENV === "production") {
-          return NextResponse.json(
-            { error: "Unauthorized" },
-            { status: 401 }
-          );
-        } else {
-          console.warn("[/api/gmail/auth] User auth failed, using dev fallback user in development.");
-          userId = "dev-user";
-        }
+        return NextResponse.json(
+          { error: "Unauthorized", details: "Invalid authentication token." },
+          { status: 401 }
+        );
+      }
+      // Use userId from header if it matches authenticated user
+      if (userIdHeader === userResult.user.id) {
+        userId = userIdHeader;
       } else {
         userId = userResult.user.id;
       }
     } else {
-      // No access token and in production - return Unauthorized
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      // Get userId from auth token
+      const { data: userResult, error: userError } = await supabase.auth.getUser(accessToken);
+      if (userError || !userResult?.user) {
+        return NextResponse.json(
+          { error: "Unauthorized", details: "Invalid authentication token." },
+          { status: 401 }
+        );
+      }
+      userId = userResult.user.id;
     }
 
     // Construct redirect URI from the request origin to ensure it matches exactly
@@ -103,9 +106,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Final fallback to environment variable or default (use 3001 as default)
+    // Final fallback to environment variable or default (use 3000 as default for Next.js)
     if (!origin) {
-      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     }
     
     // Use explicit redirect URI from env if set, otherwise construct from origin

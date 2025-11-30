@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const origin = request.headers.get("origin") || 
                  request.headers.get("referer")?.split("/").slice(0, 3).join("/") || 
                  process.env.NEXT_PUBLIC_APP_URL || 
-                 "http://localhost:3001";
+                 "http://localhost:3000";
   
   const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;
   const cleanRedirectUri = redirectUri.replace(/\/$/, "").trim();

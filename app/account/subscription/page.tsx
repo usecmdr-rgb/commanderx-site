@@ -9,6 +9,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/Modal";
+import TeamSeatsSection from "@/components/subscription/TeamSeatsSection";
+import BillingPreview from "@/components/subscription/BillingPreview";
+import PlanAdvisor from "@/components/pricing/PlanAdvisor";
 import type { SubscriptionData, SubscriptionTier, PaymentMethodInfo } from "@/types";
 import { tierConfig, type TierId } from "@/lib/stripe";
 import { formatPrice, BASE_PRICES } from "@/lib/currency";
@@ -345,6 +348,15 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Plan Advisor */}
+      <PlanAdvisor mode="workspace" />
+
+      {/* Team & Seats Section */}
+      <TeamSeatsSection />
+
+      {/* Billing Preview */}
+      <BillingPreview />
 
       {/* Available Plans */}
       <div>

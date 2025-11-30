@@ -36,6 +36,8 @@ export const stripe = new Proxy({} as Stripe, {
 
 export type TierId = "basic" | "advanced" | "elite";
 
+import { TIERS } from './pricing';
+
 export const tierConfig: Record<
   TierId,
   {
@@ -46,17 +48,17 @@ export const tierConfig: Record<
 > = {
   basic: {
     priceId: process.env.STRIPE_PRICE_ID_BASIC || "",
-    amount: 2999, // €29.99 in cents
+    amount: Math.round(TIERS.basic.priceMonthly * 100), // Convert to cents
     currency: "eur",
   },
   advanced: {
     priceId: process.env.STRIPE_PRICE_ID_ADVANCED || "",
-    amount: 7999, // €79.99 in cents
+    amount: Math.round(TIERS.advanced.priceMonthly * 100), // Convert to cents
     currency: "eur",
   },
   elite: {
     priceId: process.env.STRIPE_PRICE_ID_ELITE || "",
-    amount: 12999, // €129.99 in cents
+    amount: Math.round(TIERS.elite.priceMonthly * 100), // Convert to cents
     currency: "eur",
   },
 };

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
   
   if (!origin) {
-    origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+    origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   }
   
   const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;

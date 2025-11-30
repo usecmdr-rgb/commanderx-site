@@ -1,4 +1,4 @@
-import { Phone, Mail, Brush, BarChart3 } from "lucide-react";
+import { Phone, Mail, Image, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /**
@@ -39,7 +39,7 @@ export const AGENTS: AgentConfig[] = [
     id: "studio",
     label: "Studio",
     description: "Your content, editing & branding assistant",
-    icon: Brush,
+    icon: Image,
     accent: "bg-violet-500",
     route: "/studio",
     oldId: "mu",

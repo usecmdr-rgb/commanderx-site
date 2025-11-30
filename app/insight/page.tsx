@@ -11,6 +11,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 import DailyBriefCard from "@/components/insight/DailyBriefCard";
 import InsightGenerator from "@/components/insight/InsightGenerator";
 import WorkflowManager from "@/components/insight/WorkflowManager";
+import InsightTimeline from "@/components/insight/InsightTimeline";
+import ActivityMixChart from "@/components/insight/ActivityMixChart";
+import InsightScoreWidget from "@/components/insight/InsightScoreWidget";
+import InsightMemoryPanel from "@/components/insight/InsightMemoryPanel";
 
 // timeframes will be defined inside component to use translations
 
@@ -157,40 +161,30 @@ export default function InsightPage() {
         </div>
       </section>
       <section className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-        <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-          <h2 className="text-lg font-semibold">{t("insights")}</h2>
-          <div className="mt-2 space-y-2">
-            {insights[timeframe].map((text) => (
-              <div key={text} className="rounded-xl border border-slate-100 bg-white/80 p-3 text-xs text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
-                {text}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
-          <h2 className="text-lg font-semibold">{t("insightCallsVsEmails")}</h2>
-          <div className="mt-2 grid h-32 grid-cols-6 items-end gap-2">
-            {[8, 12, 6, 10, 7, 11].map((height, index) => (
-              <div key={index} className="space-y-1 text-center">
-                <div className="mx-auto w-5 rounded-full bg-slate-900" style={{ height: `${height * 4}px` }}></div>
-                <p className="text-xs text-slate-500">W{index + 1}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            {t("insightPlaceholderChart")}
-          </p>
-        </div>
+        <InsightTimeline range={timeframe} />
+        <ActivityMixChart range={timeframe} />
       </section>
 
       {/* Insight Intelligence Features - Disabled in preview mode */}
       {!isPreview && (
         <section className="mt-4">
           <h2 className="text-xl font-semibold mb-4">{t("insightIntelligence")}</h2>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <DailyBriefCard />
-            <InsightGenerator />
+          
+          {/* Insight Score Widget */}
+          <div className="mb-4">
+            <InsightScoreWidget range={timeframe} />
           </div>
+          
+          <div className="grid gap-4 lg:grid-cols-2">
+            <DailyBriefCard range={timeframe} />
+            <InsightGenerator range={timeframe} />
+          </div>
+          
+          {/* Insight Memory Panel */}
+          <div className="mt-4">
+            <InsightMemoryPanel />
+          </div>
+          
           <div className="mt-4">
             <WorkflowManager />
           </div>

@@ -1,112 +1,89 @@
 # OAuth Setup Verification Checklist
 
-Based on your Google Cloud Console screenshot, here's what to verify:
+## ✅ What You've Configured
 
-## ✅ What Looks Correct:
+### 1. Supabase Google Provider
+- [x] Google provider enabled in Supabase
+- [x] Client ID added to Supabase
+- [x] Client Secret added to Supabase
+- [x] Callback URL configured: `https://nupxbdbychuqokubresi.supabase.co/auth/v1/callback`
 
-1. **Client ID**: `1077385431224-vn2b4p0jl1gqs1gm7eubj0egephtt610.apps.googleusercontent.com`
-   - ✓ Matches your .env.local file
-   - ✓ This is the correct Client ID
+### 2. Google Cloud Console
+- [x] OAuth client "CommanderX" created
+- [x] Redirect URIs added:
+  - `http://localhost:3001/api/gmail/callback` (Gmail API - local)
+  - `https://ovrsee.ai/api/gmail/callback` (Gmail API - production)
+  - `https://nupxbdbychuqokubresi.supabase.co/auth/v1/callback` (Supabase Google sign-in)
 
-2. **Redirect URI**: `http://localhost:3001/api/gmail/callback`
-   - ✓ Correctly added
-   - ✓ Matches what the app is using
-   - ✓ No trailing slash
-   - ✓ Correct port (3001)
+## ⚠️ What Still Needs to be Done
 
-3. **Client Secret**: Shows as `****gLnq` (masked)
-   - Should match: `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` in your .env.local
+### 3. Update `.env.local` File
+Your Gmail credentials are still placeholders. You need to:
 
-## ⚠️ Potential Issues:
-
-### Issue 1: Client Secret Mismatch
-
-The Client Secret in Google Cloud Console is masked. If you lost it or it doesn't match:
-
-**Fix:**
-1. In Google Cloud Console, click **"+ Add secret"** button
-2. This will create a new client secret
-3. **Copy the new secret immediately** (you won't see it again!)
-4. Update `.env.local`:
+1. Open `.env.local` in your project root
+2. Replace these lines:
    ```
-   GMAIL_CLIENT_SECRET=the_new_secret_here
+   GMAIL_CLIENT_ID=your_gmail_client_id_here
+   GMAIL_CLIENT_SECRET=your_gmail_client_secret_here
    ```
-5. Restart your dev server
-
-### Issue 2: OAuth Consent Screen Not Configured
-
-Even though the Client ID and redirect URI are correct, you still need:
-
-1. **OAuth Consent Screen configured:**
-   - Go to: https://console.cloud.google.com/apis/credentials/consent
-   - Make sure it's configured with:
-     - App name
-     - Your email as support email
-     - Gmail scopes added
-     - Your email (`usecmdr@gmail.com`) added as **Test user**
-
-2. **Gmail API Enabled:**
-   - Go to: https://console.cloud.google.com/apis/library/gmail.googleapis.com
-   - Make sure "Gmail API" shows as "Enabled"
-
-### Issue 3: Settings Not Propagated
-
-The note says: "It may take 5 minutes to a few hours for settings to take effect"
-
-**Fix:**
-- Wait a few minutes after saving
-- Try again
-- Clear browser cache
-- Try in incognito mode
-
-## 🔍 Verification Steps:
-
-1. **Verify .env.local matches:**
-   ```bash
-   cat .env.local | grep GMAIL
-   ```
-   Should show:
+   
+   With your actual credentials from Google Cloud Console:
    ```
    GMAIL_CLIENT_ID=1077385431224-vn2b4p0jl1gqs1gm7eubj0egephtt610.apps.googleusercontent.com
-   GMAIL_CLIENT_SECRET=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
+   GMAIL_CLIENT_SECRET=your_actual_secret_here
    ```
 
-2. **Check OAuth Consent Screen:**
-   - Visit: https://console.cloud.google.com/apis/credentials/consent
-   - Verify:
-     - Status is "Testing" or "In production"
-     - Gmail scopes are added
-     - Your email is in "Test users" list
+3. **Restart your dev server** after updating (important!)
 
-3. **Test the configuration:**
-   - Visit: http://localhost:3001/api/gmail/test
-   - Should show all green checkmarks
+## 🧪 How to Test
 
-4. **Restart server:**
-   ```bash
-   # Stop server (Ctrl+C)
-   npm run dev
-   ```
+### Test 1: Google Sign-In Button
+1. Start your dev server: `npm run dev`
+2. Go to your app homepage
+3. Click "Log in" or "Sign up"
+4. Click "Continue with Google" button
+5. **Expected**: Should redirect to Google sign-in page
+6. After signing in, should redirect back to `/app`
 
-## 🚨 If Still Getting "invalid_client":
+### Test 2: Gmail Connection
+1. Log in to your app
+2. Go to `/sync` page
+3. Click "Connect your Gmail" button
+4. **Expected**: Should open Google OAuth popup
+5. After authorizing, should show "Gmail Connected"
 
-1. **Create a new Client Secret:**
-   - Click "+ Add secret" in Google Cloud Console
-   - Copy the new secret
-   - Update .env.local
-   - Restart server
+### Test 3: Configuration Check
+1. Visit: `http://localhost:3001/api/gmail/test`
+2. **Expected**: Should show all green checkmarks
+3. Should show your redirect URI: `http://localhost:3001/api/gmail/callback`
 
-2. **Verify OAuth Consent Screen:**
-   - Make sure it's fully configured
-   - Add your email as test user
-   - Add Gmail scopes
+### Test 4: Check Config API
+1. Visit: `http://localhost:3001/api/gmail/check-config`
+2. **Expected**: Should return `{"ok": true}` with no issues
 
-3. **Wait for propagation:**
-   - Google says settings can take 5 minutes to hours
-   - Try again after waiting
+## 🔍 Troubleshooting
 
-4. **Check browser console:**
-   - Open browser DevTools (F12)
-   - Check Console tab for any errors
-   - Check Network tab for failed requests
+### If "Continue with Google" doesn't work:
+- Check Supabase dashboard → Authentication → Providers → Google is enabled
+- Verify Client ID and Secret are correct in Supabase
+- Check browser console for errors
+- Make sure callback URL is in Google Cloud Console
 
+### If Gmail connection doesn't work:
+- Verify `.env.local` has real credentials (not placeholders)
+- Restart dev server after updating `.env.local`
+- Check redirect URI matches exactly in Google Cloud Console
+- Visit `/api/gmail/test` to see configuration status
+
+## 📝 Quick Commands
+
+```bash
+# Check if credentials are set (should NOT show "your_")
+grep GMAIL_CLIENT .env.local
+
+# Test configuration endpoint
+curl http://localhost:3001/api/gmail/check-config
+
+# View test page in browser
+open http://localhost:3001/api/gmail/test
+```

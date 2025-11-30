@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
-import type { InsightRequest, InsightResponse } from "@/types";
+import { openai } from "@/lib/openai";
+import { getWorkspaceIdFromAuth } from "@/lib/workspace-helpers";
+import { getMemoryFacts, getUserGoals, getImportantRelationships } from "@/lib/insight/memory";
+import { generateInsightsForRange } from "@/lib/insight/generator";
+import { AGENT_CONFIG } from "@/lib/agents/config";
+import type { InsightRequest, InsightResponse, TimeRange } from "@/types";
 import { mockCalls, mockEmails, mockMediaItems } from "@/lib/data";
 
 // Helper to query Aloha for insights
@@ -179,10 +184,23 @@ async function queryStudio(question: string, timeframe: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: InsightRequest & { language?: string } = await request.json();
-    const { question, timeframe = "today", language } = body;
-    // Note: Language parameter is accepted but not yet used in this endpoint.
-    // Future enhancement: Generate insights in the user's preferred language.
+    const supabase = getSupabaseServerClient();
+    
+    // Get authenticated user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const body: InsightRequest & { language?: string; range?: TimeRange } = await request.json();
+    const { question, timeframe = "today", language, range = "daily" } = body;
 
     if (!question) {
       return NextResponse.json(
@@ -191,6 +209,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get workspace ID for memory/context
+    const workspaceId = await getWorkspaceIdFromAuth();
+    
+    // Fetch memory facts and relationships for personalization
+    const [memoryFacts, goals, relationships] = workspaceId ? await Promise.all([
+      getMemoryFacts(workspaceId, 0.5),
+      getUserGoals(workspaceId, 'active'),
+      getImportantRelationships(workspaceId, 60),
+    ]) : [[], [], []];
+
     // Query all agents in parallel
     const [alohaResults, syncResults, studioResults] = await Promise.all([
       queryAloha(question, timeframe),
@@ -198,22 +226,25 @@ export async function POST(request: NextRequest) {
       queryStudio(question, timeframe),
     ]);
 
-    // Merge insights
-    const keyInsights = [
+    // Generate insights from database
+    const dbInsights = await generateInsightsForRange(user.id, range as TimeRange);
+
+    // Merge raw insights
+    const rawKeyInsights = [
       ...alohaResults.insights,
       ...syncResults.insights,
       ...studioResults.insights,
     ];
 
     // Merge priority decisions
-    const priorityDecisions = [
+    const rawPriorityDecisions = [
       ...alohaResults.decisions.map((d) => ({ ...d, agent: "aloha" as const })),
       ...syncResults.decisions.map((d) => ({ ...d, agent: "sync" as const })),
       ...studioResults.decisions.map((d) => ({ ...d, agent: "studio" as const })),
     ];
 
     // Merge trends
-    const trends: InsightResponse["trends"] = [
+    const rawTrends: InsightResponse["trends"] = [
       ...(studioResults.trends || []),
       {
         agent: "aloha" as const,
@@ -234,14 +265,14 @@ export async function POST(request: NextRequest) {
     ];
 
     // Merge risks
-    const risks = [
+    const rawRisks = [
       ...alohaResults.risks,
       ...syncResults.risks,
       ...studioResults.risks,
     ];
 
-    // Generate recommendations
-    const recommendations = [
+    // Generate raw recommendations
+    const rawRecommendations = [
       ...(alohaResults.data.calls.missed > 0 ? [{
         id: "rec-aloha-calls",
         recommendation: "Review call routing and availability",
@@ -262,17 +293,101 @@ export async function POST(request: NextRequest) {
       }] : []),
     ];
 
-    const response: InsightResponse = {
-      question,
-      generatedAt: new Date().toISOString(),
-      keyInsights,
-      priorityDecisions,
-      trends,
-      risks,
-      recommendations,
-    };
+    // Enhance with OpenAI
+    let enhancedResponse: InsightResponse;
+    
+    try {
+      const systemPrompt = `You are the OVRSEE Insight Agent. Analyze the user's question and provided data from all agents (Aloha, Sync, Studio) to generate enhanced, personalized insights.
 
-    return NextResponse.json({ ok: true, data: response });
+Rules:
+- Be specific and actionable
+- Reference memory facts and user goals when relevant
+- Prioritize insights by importance
+- Suggest practical recommendations
+- Identify patterns and trends
+- Be concise but insightful`;
+
+      const userPrompt = `User Question: "${question}"
+Time Range: ${range}
+
+=== RAW DATA FROM AGENTS ===
+Aloha: ${JSON.stringify(alohaResults.data, null, 2)}
+Sync: ${JSON.stringify(syncResults.data, null, 2)}
+Studio: ${JSON.stringify(studioResults.data, null, 2)}
+
+=== RAW INSIGHTS ===
+${JSON.stringify(rawKeyInsights, null, 2)}
+
+=== DATABASE INSIGHTS ===
+${JSON.stringify(dbInsights.slice(0, 10).map(i => ({ title: i.title, description: i.description, severity: i.severity })), null, 2)}
+
+=== MEMORY FACTS ===
+${JSON.stringify(memoryFacts.slice(0, 10), null, 2)}
+
+=== USER GOALS ===
+${JSON.stringify(goals.slice(0, 5), null, 2)}
+
+=== IMPORTANT RELATIONSHIPS ===
+${JSON.stringify(relationships.slice(0, 5), null, 2)}
+
+Generate an enhanced InsightResponse JSON with:
+1. keyInsights: 5-10 most important insights (enhanced with context)
+2. priorityDecisions: Top 5 decisions needing action (prioritized)
+3. trends: Enhanced trend analysis
+4. risks: Top risks with severity assessment
+5. recommendations: 3-5 actionable recommendations
+6. followUpQuestions: 2-3 suggested follow-up questions
+
+Return ONLY valid JSON matching the InsightResponse interface.`;
+
+      const completion = await openai.chat.completions.create({
+        model: AGENT_CONFIG.insight.primaryModel, // Use gpt-4o for business intelligence
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content);
+        enhancedResponse = {
+          question,
+          generatedAt: new Date().toISOString(),
+          keyInsights: parsed.keyInsights || rawKeyInsights,
+          priorityDecisions: parsed.priorityDecisions || rawPriorityDecisions,
+          trends: parsed.trends || rawTrends,
+          risks: parsed.risks || rawRisks,
+          recommendations: parsed.recommendations || rawRecommendations,
+          followUpQuestions: parsed.followUpQuestions || [
+            "What are the top priorities right now?",
+            "What trends should I watch?",
+          ],
+        };
+      } else {
+        throw new Error("No content from LLM");
+      }
+    } catch (llmError: any) {
+      console.error("LLM error, using raw insights:", llmError);
+      // Fallback to raw merged insights
+      enhancedResponse = {
+        question,
+        generatedAt: new Date().toISOString(),
+        keyInsights: rawKeyInsights,
+        priorityDecisions: rawPriorityDecisions,
+        trends: rawTrends,
+        risks: rawRisks,
+        recommendations: rawRecommendations,
+        followUpQuestions: [
+          "What are the top priorities right now?",
+          "What trends should I watch?",
+        ],
+      };
+    }
+
+    return NextResponse.json({ ok: true, data: enhancedResponse });
   } catch (error: any) {
     console.error("Error generating insights:", error);
     return NextResponse.json(

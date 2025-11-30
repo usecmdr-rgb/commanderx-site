@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
               status: profile.subscription_status || null,
               currentPeriodEnd: null,
               cancelAtPeriodEnd: false,
+              trialEnd: profile.trial_ends_at || null,
             },
             paymentMethod: null,
             trial: {
@@ -231,6 +232,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Get trial eligibility check and retention status early (needed for all responses)
+    const hasUsedTrial = userEmail
+      ? await hasEmailUsedTrial(userEmail)
+      : (profile.has_used_trial ?? false);
+    const retentionStatus = await getDataRetentionStatus(userId);
+
     // If no Stripe customer, return basic info
     if (!profile.stripe_customer_id) {
       return NextResponse.json({
@@ -239,8 +246,19 @@ export async function GET(request: NextRequest) {
           status: profile.subscription_status || null,
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
+          trialEnd: profile.trial_ends_at || null,
         },
         paymentMethod: null,
+        trial: {
+          hasUsedTrial,
+          isExpired: profile.subscription_tier === "trial_expired",
+        },
+        retention: {
+          isInRetentionWindow: retentionStatus.hasRetentionWindow && !retentionStatus.isExpired,
+          daysRemaining: retentionStatus.daysRemaining,
+          isDataCleared: retentionStatus.isDataCleared,
+          reason: retentionStatus.reason,
+        },
       });
     }
 
@@ -294,14 +312,6 @@ export async function GET(request: NextRequest) {
         expYear: paymentMethod.card.exp_year,
       };
     }
-
-    // Get trial eligibility check (userEmail already declared above)
-    const hasUsedTrial = userEmail
-      ? await hasEmailUsedTrial(userEmail)
-      : (profile.has_used_trial ?? false);
-
-    // Get data retention status
-    const retentionStatus = await getDataRetentionStatus(userId);
 
     return NextResponse.json({
       subscription: {

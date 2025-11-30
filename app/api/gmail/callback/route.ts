@@ -60,9 +60,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Final fallback (use 3001 as default)
+    // Final fallback (use 3000 as default for Next.js)
     if (!origin) {
-      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+      origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     }
     
     const redirectUri = process.env.GMAIL_REDIRECT_URI || `${origin}/api/gmail/callback`;
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     const redirectOrigin =
       origin ||
       process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3001";
+      "http://localhost:3000";
 
     return NextResponse.redirect(
       new URL(`${redirectOrigin}/sync?gmail_connected=true`, request.url)

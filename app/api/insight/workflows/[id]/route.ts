@@ -13,8 +13,21 @@ export async function PUT(
 
     const supabase = getSupabaseServerClient();
     
+    // Get current user for auth
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    
     const updateData: any = {
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
     
     if (name !== undefined) updateData.name = name;
@@ -28,21 +41,30 @@ export async function PUT(
       .from("workflows")
       .update(updateData)
       .eq("id", id)
+      .eq("user_id", user.id)
       .select()
       .single();
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
+      console.error("Error updating workflow:", error);
       throw error;
     }
 
-    if (error && error.code === "PGRST116") {
-      return NextResponse.json(
-        { error: "Workflows table not found" },
-        { status: 404 }
-      );
-    }
+    // Transform to Workflow type
+    const workflow = {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description,
+      enabled: data.enabled,
+      trigger: data.trigger,
+      condition: data.condition,
+      actions: data.actions,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data: workflow });
   } catch (error: any) {
     console.error("Error updating workflow:", error);
     return NextResponse.json(
@@ -61,20 +83,28 @@ export async function DELETE(
     const { id } = await params;
     const supabase = getSupabaseServerClient();
     
+    // Get current user for auth
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    
     const { error } = await supabase
       .from("workflows")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
+      console.error("Error deleting workflow:", error);
       throw error;
-    }
-
-    if (error && error.code === "PGRST116") {
-      return NextResponse.json(
-        { error: "Workflows table not found" },
-        { status: 404 }
-      );
     }
 
     return NextResponse.json({ ok: true });

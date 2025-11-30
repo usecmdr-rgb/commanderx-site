@@ -7,7 +7,11 @@ import { useAppState } from "@/context/AppStateContext";
 import { getLanguageFromLocale } from "@/lib/localization";
 import { useTranslation } from "@/hooks/useTranslation";
 
-export default function InsightGenerator() {
+interface InsightGeneratorProps {
+  range?: 'daily' | 'weekly' | 'monthly';
+}
+
+export default function InsightGenerator({ range = 'daily' }: InsightGeneratorProps) {
   const { language } = useAppState();
   const t = useTranslation();
   const [question, setQuestion] = useState("");
@@ -37,6 +41,7 @@ export default function InsightGenerator() {
         body: JSON.stringify({ 
           question: queryToUse,
           language: getLanguageFromLocale(language),
+          range,
         }),
       });
 

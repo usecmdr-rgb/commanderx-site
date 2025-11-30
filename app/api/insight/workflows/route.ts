@@ -5,28 +5,48 @@ import type { Workflow } from "@/types";
 // GET: List all workflows for a user
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
-    }
-
     const supabase = getSupabaseServerClient();
     
-    // Try to fetch from database, fallback to empty array if table doesn't exist
+    // Get current user for auth
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Fetch workflows from database
     const { data, error } = await supabase
       .from("workflows")
       .select("*")
-      .eq("userId", userId)
-      .order("createdAt", { ascending: false });
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = table doesn't exist, which is fine for now
+    if (error) {
+      console.error("Error fetching workflows:", error);
       throw error;
     }
 
-    return NextResponse.json({ ok: true, data: data || [] });
+    // Transform to Workflow type
+    const workflows: Workflow[] = (data || []).map((row: any) => ({
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      description: row.description,
+      enabled: row.enabled,
+      trigger: row.trigger,
+      condition: row.condition,
+      actions: row.actions,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return NextResponse.json({ ok: true, data: workflows });
   } catch (error: any) {
     console.error("Error fetching workflows:", error);
     return NextResponse.json(
@@ -40,54 +60,67 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, name, description, trigger, condition, actions, enabled = true } = body;
+    const { name, description, trigger, condition, actions, enabled = true } = body;
 
-    if (!userId || !name || !trigger || !actions || !Array.isArray(actions)) {
+    if (!name || !trigger || !actions || !Array.isArray(actions)) {
       return NextResponse.json(
-        { error: "Missing required fields: userId, name, trigger, actions" },
+        { error: "Missing required fields: name, trigger, actions" },
         { status: 400 }
       );
     }
 
     const supabase = getSupabaseServerClient();
     
-    const workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> = {
-      userId,
-      name,
-      description,
-      enabled,
-      trigger,
-      condition,
-      actions,
-    };
+    // Get current user for auth
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    // Try to insert, but handle case where table doesn't exist
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Insert workflow
     const { data, error } = await supabase
       .from("workflows")
       .insert({
-        ...workflow,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        user_id: user.id,
+        name,
+        description,
+        enabled,
+        trigger,
+        condition: condition || null,
+        actions,
+        trigger_config: {},
+        metadata: {},
       })
       .select()
       .single();
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
+      console.error("Error creating workflow:", error);
       throw error;
     }
 
-    // If table doesn't exist, return the workflow object (in-memory for now)
-    if (error && error.code === "PGRST116") {
-      const newWorkflow: Workflow = {
-        id: `workflow-${Date.now()}`,
-        ...workflow,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return NextResponse.json({ ok: true, data: newWorkflow });
-    }
+    // Transform to Workflow type
+    const workflow: Workflow = {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description,
+      enabled: data.enabled,
+      trigger: data.trigger,
+      condition: data.condition,
+      actions: data.actions,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data: workflow });
   } catch (error: any) {
     console.error("Error creating workflow:", error);
     return NextResponse.json(

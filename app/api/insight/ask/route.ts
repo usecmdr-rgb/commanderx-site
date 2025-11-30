@@ -25,6 +25,7 @@ import { predictTrend } from "@/lib/insight/forecast";
 import { getMemoryFacts, getUserGoals, getImportantRelationships } from "@/lib/insight/memory";
 import { buildAskSystemPrompt, buildAskUserPrompt } from "@/lib/insight/prompts";
 import { getWorkspaceIdFromAuth } from "@/lib/workspace-helpers";
+import { AGENT_CONFIG } from "@/lib/agents/config";
 import type { AskInsightAnswer, TimeRange, Insight } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: AGENT_CONFIG.insight.primaryModel, // Use gpt-4o for business intelligence
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

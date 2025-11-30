@@ -15,6 +15,7 @@ import TrialExpiredBanner from "@/components/agent/TrialExpiredBanner";
 import { TestOpenAIButton } from "@/components/app/TestOpenAIButton";
 import type { AgentKey } from "@/types";
 import { formatMoney as formatCurrency } from "@/lib/currency";
+import CommandSummaryCard from "@/components/dashboard/CommandSummaryCard";
 
 import { AGENT_BY_ID } from "@/lib/config/agents";
 
@@ -466,6 +467,11 @@ export default function DashboardPage() {
         formatTime={formatTime}
         formatMoney={formatMoney}
       />
+      
+      {/* Daily Command Summary - only show for today timeframe */}
+      {timeframe === "today" && !isPreview && (
+        <CommandSummaryCard />
+      )}
       
       {/* Test OpenAI backend connection - only visible to admins or in dev mode */}
       <TestOpenAIButton />

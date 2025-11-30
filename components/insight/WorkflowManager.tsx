@@ -14,15 +14,13 @@ export default function WorkflowManager() {
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null);
   const [executingWorkflow, setExecutingWorkflow] = useState<string | null>(null);
 
-  // Mock userId - in production, get from auth context
-  const userId = "user-1";
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/insight/workflows?userId=${userId}`);
+      const response = await fetch(`/api/insight/workflows`);
       const result = await response.json();
 
       if (result.ok) {
@@ -35,7 +33,7 @@ export default function WorkflowManager() {
     } finally {
       setLoading(false);
     }
-  }, [userId, t]);
+  }, [t]);
 
   useEffect(() => {
     fetchWorkflows();
@@ -46,7 +44,7 @@ export default function WorkflowManager() {
       const response = await fetch("/api/insight/workflows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...workflow, userId }),
+        body: JSON.stringify(workflow),
       });
 
       const result = await response.json();
@@ -87,7 +85,7 @@ export default function WorkflowManager() {
 
   const toggleWorkflow = async (workflow: WorkflowType) => {
     try {
-      const response = await fetch(`/api/beta/workflows/${workflow.id}`, {
+      const response = await fetch(`/api/insight/workflows/${workflow.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !workflow.enabled }),
@@ -250,7 +248,7 @@ export default function WorkflowManager() {
           onSave={async (workflow) => {
             // Update workflow
             try {
-              const response = await fetch(`/api/beta/workflows/${editingWorkflow.id}`, {
+              const response = await fetch(`/api/insight/workflows/${editingWorkflow.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(workflow),

@@ -2,8 +2,113 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { getSupabaseServerClient } from "@/lib/supabaseServerClient";
 import Stripe from "stripe";
+import {
+  sendSubscriptionCreatedEmail,
+  sendSubscriptionUpdatedEmail,
+  sendInvoiceUpcomingEmail,
+  sendInvoicePaidEmail,
+  sendInvoiceFailedEmail,
+} from "@/lib/emails/billing";
+import { calculateTeamPricing } from "@/lib/pricing";
+import type { SeatSelection } from "@/lib/pricing";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+/**
+ * Find workspace ID from Stripe customer or subscription metadata
+ */
+async function findWorkspaceIdFromStripe(
+  customerId: string,
+  subscription?: Stripe.Subscription
+): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+
+  // Check subscription metadata first (workspace subscriptions have workspace_id in metadata)
+  if (subscription?.metadata?.workspace_id) {
+    return subscription.metadata.workspace_id as string;
+  }
+
+  // Find workspace by stripe_customer_id
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .single();
+
+  return workspace?.id || null;
+}
+
+/**
+ * Get seat configuration from workspace for email
+ */
+async function getWorkspaceSeatConfiguration(workspaceId: string): Promise<{
+  seatCount: number;
+  tiers: { tier: string; count: number }[];
+  monthlyTotal: number;
+}> {
+  const supabase = getSupabaseServerClient();
+
+  const { data: seats } = await supabase
+    .from("workspace_seats")
+    .select("tier")
+    .eq("workspace_id", workspaceId)
+    .in("status", ["active", "pending"]);
+
+  const seatCount = seats?.length || 0;
+  const tiers: Record<string, number> = {};
+
+  (seats || []).forEach((seat: any) => {
+    tiers[seat.tier] = (tiers[seat.tier] || 0) + 1;
+  });
+
+  const seatSelections: SeatSelection[] = Object.entries(tiers)
+    .filter(([_, count]) => count > 0)
+    .map(([tier, count]) => ({
+      tier: tier as "basic" | "advanced" | "elite",
+      count: count as number,
+    }));
+
+  const pricing = calculateTeamPricing(seatSelections);
+
+  return {
+    seatCount,
+    tiers: Object.entries(tiers).map(([tier, count]) => ({
+      tier,
+      count: count as number,
+    })),
+    monthlyTotal: pricing.finalTotal,
+  };
+}
+
+/**
+ * Generate diff summary for subscription updates
+ */
+function generateSubscriptionDiffSummary(
+  oldSeats: { tier: string; count: number }[],
+  newSeats: { tier: string; count: number }[]
+): string {
+  const oldMap = new Map(oldSeats.map((s) => [`${s.tier}`, s.count]));
+  const newMap = new Map(newSeats.map((s) => [`${s.tier}`, s.count]));
+
+  const changes: string[] = [];
+
+  // Check all tiers
+  const allTiers = new Set([...oldMap.keys(), ...newMap.keys()]);
+  
+  for (const tier of allTiers) {
+    const oldCount = oldMap.get(tier) || 0;
+    const newCount = newMap.get(tier) || 0;
+    const diff = newCount - oldCount;
+
+    if (diff > 0) {
+      changes.push(`Added ${diff} ${tier} seat${diff > 1 ? "s" : ""}`);
+    } else if (diff < 0) {
+      changes.push(`Removed ${Math.abs(diff)} ${tier} seat${Math.abs(diff) > 1 ? "s" : ""}`);
+    }
+  }
+
+  return changes.length > 0 ? changes.join(". ") + "." : "No seat changes.";
+}
 
 /**
  * POST /api/stripe/webhook
@@ -192,6 +297,28 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Send subscription created email (workspace-based)
+        try {
+          const workspaceId = await findWorkspaceIdFromStripe(customerId, subscription);
+          if (workspaceId) {
+            const seatConfig = await getWorkspaceSeatConfiguration(workspaceId);
+            await sendSubscriptionCreatedEmail({
+              workspaceId,
+              seatCount: seatConfig.seatCount,
+              tiers: seatConfig.tiers,
+              nextBillingDate: subscription.current_period_end
+                ? new Date(subscription.current_period_end * 1000).toISOString()
+                : new Date().toISOString(),
+              monthlyTotal: seatConfig.monthlyTotal,
+            }).catch((error) => {
+              console.error("Failed to send subscription created email:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error sending subscription created email:", error);
+          // Don't fail webhook if email fails
+        }
+
         break;
       }
 
@@ -291,6 +418,72 @@ export async function POST(request: NextRequest) {
           console.error("Error updating profile:", updateError);
         }
 
+        // Send subscription updated email (workspace-based) - only for updates, not deletes
+        if (event.type === "customer.subscription.updated") {
+          try {
+            const workspaceId = await findWorkspaceIdFromStripe(customerId, subscription);
+            if (workspaceId) {
+              // Get old seat config from currentSub if available
+              const oldSeatConfig = currentSub
+                ? await getWorkspaceSeatConfiguration(workspaceId).catch(() => null)
+                : null;
+              const newSeatConfig = await getWorkspaceSeatConfiguration(workspaceId);
+              
+              // Generate diff summary
+              const diffSummary = oldSeatConfig
+                ? generateSubscriptionDiffSummary(oldSeatConfig.tiers, newSeatConfig.tiers)
+                : "Subscription configuration updated.";
+
+              await sendSubscriptionUpdatedEmail({
+                workspaceId,
+                diffSummary,
+                newMonthlyTotal: newSeatConfig.monthlyTotal,
+                nextBillingDate: subscription.current_period_end
+                  ? new Date(subscription.current_period_end * 1000).toISOString()
+                  : new Date().toISOString(),
+              }).catch((error) => {
+                console.error("Failed to send subscription updated email:", error);
+              });
+            }
+          } catch (error) {
+            console.error("Error sending subscription updated email:", error);
+            // Don't fail webhook if email fails
+          }
+        }
+
+        break;
+      }
+
+      case "invoice.upcoming": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const subscriptionId = invoice.subscription as string;
+
+        if (!subscriptionId || typeof subscriptionId !== "string") {
+          break;
+        }
+
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const workspaceId = await findWorkspaceIdFromStripe(customerId, subscription);
+          if (workspaceId) {
+            await sendInvoiceUpcomingEmail({
+              workspaceId,
+              amountDue: invoice.amount_due,
+              date: invoice.next_payment_attempt
+                ? new Date(invoice.next_payment_attempt * 1000).toISOString()
+                : invoice.due_date
+                ? new Date(invoice.due_date * 1000).toISOString()
+                : new Date().toISOString(),
+            }).catch((error) => {
+              console.error("Failed to send invoice upcoming email:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error sending invoice upcoming email:", error);
+          // Don't fail webhook if email fails
+        }
+
         break;
       }
 
@@ -359,6 +552,25 @@ export async function POST(request: NextRequest) {
           console.error("Error updating profile status:", updateError);
         }
 
+        // Send invoice paid email (workspace-based)
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const workspaceId = await findWorkspaceIdFromStripe(customerId, subscription);
+          if (workspaceId) {
+            await sendInvoicePaidEmail({
+              workspaceId,
+              amountPaid: invoice.amount_paid,
+              date: new Date().toISOString(),
+              invoiceUrl: invoice.hosted_invoice_url || undefined,
+            }).catch((error) => {
+              console.error("Failed to send invoice paid email:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error sending invoice paid email:", error);
+          // Don't fail webhook if email fails
+        }
+
         break;
       }
 
@@ -406,6 +618,26 @@ export async function POST(request: NextRequest) {
 
         if (updateError) {
           console.error("Error updating profile status:", updateError);
+        }
+
+        // Send invoice failed email (workspace-based)
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const workspaceId = await findWorkspaceIdFromStripe(customerId, subscription);
+          if (workspaceId) {
+            await sendInvoiceFailedEmail({
+              workspaceId,
+              amountDue: invoice.amount_due,
+              retryDate: invoice.next_payment_attempt
+                ? new Date(invoice.next_payment_attempt * 1000).toISOString()
+                : undefined,
+            }).catch((error) => {
+              console.error("Failed to send invoice failed email:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error sending invoice failed email:", error);
+          // Don't fail webhook if email fails
         }
 
         break;

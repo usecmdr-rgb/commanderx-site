@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { UserPhoneNumber } from "@/types/database";
+import AlohaIntelligence from "@/components/aloha/AlohaIntelligence";
 
 const appointments = [
   { title: "Discovery call", when: "Fri - 9:30 AM", with: "Maria Gomez" },
@@ -608,6 +609,13 @@ export default function AlohaPage() {
           ) : (
             <p className="text-sm text-slate-500">{t("alohaLoadingConversationAnalytics")}</p>
           )}
+        </div>
+      )}
+
+      {/* Aloha Intelligence - Ask Aloha */}
+      {!isPreview && activeTab === "overview" && (
+        <div className="mt-8">
+          <AlohaIntelligence />
         </div>
       )}
     </div>

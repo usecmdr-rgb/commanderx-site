@@ -1,13 +1,15 @@
 "use client";
 
-// Pricing comparison table with 3 tiers (Basic, Advanced, Elite)
+// Pricing comparison table with 3 tiers (Basic, Advanced, Elite) + Teams
 // and a clean chart that shows which agent is included in which tier.
 
 import { useState, useMemo } from "react";
-import { Check, X, AlertCircle } from "lucide-react";
+import { Check, X, AlertCircle, Calendar } from "lucide-react";
+import Link from "next/link";
 import { useSupabase } from "@/components/SupabaseProvider";
 import { useAppState } from "@/context/AppStateContext";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { agents } from "@/lib/data";
@@ -26,15 +28,15 @@ function CellValue({ value }: { value: boolean | string | undefined }) {
 
   if (value) {
     return (
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-        <Check className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20">
+        <Check className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
       </span>
     );
   }
 
   return (
-    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-destructive/10">
-      <X className="h-5 w-5 text-destructive" />
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-destructive/10">
+      <X className="h-4 w-4 text-destructive" />
     </span>
   );
 }
@@ -62,7 +64,6 @@ export default function PricingTable() {
         id: "advanced" as TierId,
         name: t("advanced"),
         price: formatPrice(BASE_PRICES.advanced, language),
-        badge: t("mostPopular"),
         description: t("unlockAlphaMu"),
       },
       {
@@ -192,59 +193,82 @@ export default function PricingTable() {
   };
 
   return (
-    <section className="w-full max-w-6xl mx-auto px-4 py-16 flex flex-col items-center">
-      {/* Header */}
-      <div className="text-center mb-10 space-y-3">
-        <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
-          {t("chooseTier")}
-        </h1>
-        <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-          {t("pricingDescription")}
-        </p>
-      </div>
-
-      {/* TABLE */}
-      <div className="overflow-x-auto rounded-2xl bg-card/60 backdrop-blur w-full max-w-5xl">
-        <table className="w-full border-separate border-spacing-0 text-base">
+    <Card className="w-full h-full flex flex-col">
+      <CardContent className="flex-1 flex flex-col">
+        {/* Monthly Plan Title */}
+        <div className="text-left mb-4">
+          <h2 className="text-lg font-semibold font-sans flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Monthly Plan
+          </h2>
+        </div>
+        {/* TABLE */}
+        <div className="w-full">
+        <table className="w-full border-separate border-spacing-0 text-xs bg-background">
           <thead>
             <tr>
               {/* Empty top-left corner cell */}
-              <th className="align-bottom bg-background/60 sticky left-0 z-20 px-4 py-4 text-left text-sm font-medium uppercase tracking-wide border-b border-r border-border">
+              <th className="align-bottom bg-background/60 px-1 py-1 text-left text-xs font-medium uppercase tracking-wide border-b border-r border-slate-200 dark:border-slate-800">
                 {/* Feature / Agent */}
               </th>
 
-              {tiers.map((tier, index) => (
-                <th
-                  key={tier.id}
-                  className={`align-bottom px-4 py-4 text-center border-b border-border ${
-                    index === 0 ? "border-r" : index === tiers.length - 1 ? "border-l" : "border-x"
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    {tier.badge && (
-                      <span className="text-xs uppercase tracking-wider text-primary font-medium mb-1">
-                        {tier.badge}
-                      </span>
-                    )}
-                    <div
-                      className={`w-full rounded-t-lg px-3 py-1.5 text-sm font-semibold tracking-wide uppercase bg-gradient-to-r ${
-                        index === 0
-                          ? "from-slate-300 to-slate-200 text-slate-700 dark:text-slate-800"
-                          : index === 1
-                            ? "from-orange-500 to-orange-600 text-background"
-                            : "from-sky-600 to-sky-500 text-background"
-                      }`}
-                    >
-                      {tier.name}
+              {tiers.map((tier, index) => {
+                const tierClass = tier.id === 'basic' ? 'tier-badge-basic' : tier.id === 'advanced' ? 'tier-badge-advanced' : 'tier-badge-elite';
+                return (
+                  <th
+                    key={tier.id}
+                    className={`align-bottom px-1.5 py-1.5 text-center border-b border-slate-200 dark:border-slate-800 ${
+                      index === 0 ? "border-r border-slate-200 dark:border-slate-800" : "border-x border-slate-200 dark:border-slate-800"
+                    }`}
+                    style={{ width: '25%' }}
+                  >
+                    {/* Fixed height container for price, badge, and tagline */}
+                    <div className="h-20 flex flex-col items-center justify-center w-full gap-0.5">
+                      {/* Price */}
+                      <div className="flex-shrink-0">
+                        <span className="text-base font-semibold">{tier.price}</span>
+                      </div>
+                      {/* Badge */}
+                      <div className="flex-shrink-0">
+                        <div className={`tier-badge ${tierClass} text-xs font-semibold tracking-wide uppercase`}>
+                          {tier.name}
+                        </div>
+                      </div>
+                      {/* Tagline */}
+                      <div className="flex-shrink-0">
+                        <span className="text-xs text-muted-foreground text-center leading-tight px-1">
+                          {tier.description}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2 text-xl font-semibold">{tier.price}</div>
-                    <div className="text-sm uppercase text-muted-foreground">{t("perMonth")}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {tier.description}
+                  </th>
+                );
+              })}
+              {/* Teams Column */}
+              <th 
+                className="align-bottom px-1.5 py-1.5 text-center border-b border-l border-slate-200 dark:border-slate-800"
+                style={{ width: '25%' }}
+              >
+                {/* Fixed height container for price, badge, and tagline */}
+                <div className="h-20 flex flex-col items-center justify-center w-full gap-0.5">
+                  {/* Price */}
+                  <div className="flex-shrink-0">
+                    <span className="text-base font-semibold text-muted-foreground">Custom</span>
+                  </div>
+                  {/* Badge */}
+                  <div className="flex-shrink-0">
+                    <div className="tier-badge tier-badge-teams text-xs font-semibold tracking-wide uppercase">
+                      Teams
                     </div>
                   </div>
-                </th>
-              ))}
+                  {/* Tagline */}
+                  <div className="flex-shrink-0">
+                    <span className="text-xs text-muted-foreground text-center leading-tight px-1">
+                      Mix & match users & tiers
+                    </span>
+                  </div>
+                </div>
+              </th>
             </tr>
           </thead>
 
@@ -257,11 +281,11 @@ export default function PricingTable() {
                   className={rowIndex % 2 === 0 ? "bg-background/40" : "bg-background/20"}
                 >
                   {/* Row label */}
-                  <td className="sticky left-0 z-10 px-4 py-4 border-t border-r border-border bg-background/60 backdrop-blur">
+                  <td className="sticky left-0 z-10 px-1.5 py-1.5 border-t border-r border-slate-200 dark:border-slate-800 bg-background/60 backdrop-blur">
                     <div className="flex flex-col items-center text-center">
-                      <span className="text-xl font-semibold">{row.label}</span>
+                      <span className="text-xs font-semibold">{row.label}</span>
                       {row.sublabel && (
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {row.sublabel}
                         </span>
                       )}
@@ -269,28 +293,33 @@ export default function PricingTable() {
                   </td>
 
                   {/* Basic */}
-                  <td className="px-4 py-4 text-center border-t border-border bg-background/60">
+                  <td className="px-1.5 py-1.5 text-center border-t border-slate-200 dark:border-slate-800 bg-background/60">
                     <CellValue value={row.basic} />
                   </td>
 
                   {/* Advanced */}
-                  <td className="px-4 py-4 text-center border-t border-l border-border">
+                  <td className="px-1.5 py-1.5 text-center border-t border-l border-slate-200 dark:border-slate-800">
                     <CellValue value={row.advanced} />
                   </td>
 
                   {/* Elite */}
-                  <td className="px-4 py-4 text-center border-t border-l border-border bg-background/60">
+                  <td className="px-1.5 py-1.5 text-center border-t border-l border-slate-200 dark:border-slate-800 bg-background/60">
                     <CellValue value={row.elite} />
+                  </td>
+
+                  {/* Teams - show checkmarks for all features */}
+                  <td className="px-1.5 py-1.5 text-center border-t border-l border-slate-200 dark:border-slate-800">
+                    <CellValue value={true} />
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-      </div>
+        </div>
 
-      {/* Free Trial Button */}
-      <div className="mt-8 flex flex-col items-center gap-4">
+        {/* Free Trial Button */}
+        <div className="mt-6 flex flex-col items-center gap-3">
         {trialStarted ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 text-center dark:border-emerald-800 dark:bg-emerald-900/20">
             <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
@@ -323,6 +352,11 @@ export default function PricingTable() {
           </div>
         ) : (
           <>
+            {!hasUsedTrial && (
+              <p className="text-xs text-muted-foreground text-center max-w-md">
+                {t("trialNote")}
+              </p>
+            )}
             <Button
               onClick={handleStartTrial}
               disabled={loading || trialStatusLoading || !canStartTrial}
@@ -339,14 +373,10 @@ export default function PricingTable() {
                 <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}
-            {!hasUsedTrial && (
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                {t("trialNote")}
-              </p>
-            )}
           </>
         )}
-      </div>
-    </section>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

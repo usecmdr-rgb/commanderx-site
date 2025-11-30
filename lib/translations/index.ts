@@ -25,7 +25,7 @@ export const translations = {
     // Home Page
     multiAgentCockpit: "Multi-agent AI cockpit",
     delegateTitle: "Delegate calls, inbox, content, and insights to OVRSEE",
-    delegateDescription: "OVRSEE helps small and midsize businesses save time and money by letting four focused AI agents handle communications, media polish, and reporting so you can stay on high-value work.",
+    delegateDescription: "OVRSEE gives small and midsize teams a single AI cockpit for calls, inbox, content, and intelligence. Four specialized agents share one workspace memory to answer, summarize, prioritize, and take action so you can stay locked on high-value work.",
     meetAgents: "Meet the agents",
     seeHowWorks: "See how OVRSEE works",
     dailyAgentStats: "Daily agent stats",

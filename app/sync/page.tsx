@@ -12,6 +12,7 @@ import { supabaseBrowserClient } from "@/lib/supabaseClient";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getLanguageFromLocale } from "@/lib/localization";
 import { Loader2, CheckCircle2, Mail, Calendar as CalendarIcon, Clock, MapPin, Users, FileText, Edit2 } from "lucide-react";
+import SyncIntelligence from "@/components/sync/SyncIntelligence";
 
 interface ChatMessage {
   role: "user" | "agent";
@@ -151,54 +152,45 @@ const SyncPage = () => {
     if (error) {
       const errorDetails = params.get("details");
       let errorMessage = "Failed to connect Gmail";
-      let showSetupInstructions = false;
       
       if (error === "invalid_request" || error === "access_denied") {
-        errorMessage = "OAuth Access Blocked - OAuth Consent Screen Issue\n\n";
+        errorMessage = "OAuth Access Blocked\n\n";
         errorMessage += "This usually means:\n";
         errorMessage += "1. OAuth consent screen is not configured\n";
         errorMessage += "2. Your email is not added as a test user\n";
         errorMessage += "3. Required scopes are not added\n\n";
-        errorMessage += "🔴 FIX:\n";
+        errorMessage += "Fix:\n";
         errorMessage += "1. Go to: https://console.cloud.google.com/apis/credentials/consent\n";
-        errorMessage += "2. Configure OAuth consent screen (if not done)\n";
-        errorMessage += "3. Add Gmail scopes:\n";
-        errorMessage += "   - https://www.googleapis.com/auth/gmail.readonly\n";
-        errorMessage += "   - https://www.googleapis.com/auth/gmail.modify\n";
-        errorMessage += "4. Add your email as TEST USER: nematollah.cas@gmail.com\n";
-        errorMessage += "5. Save and try again\n\n";
-        errorMessage += "See OAUTH_FIX_CHECKLIST.md for detailed steps.";
-        showSetupInstructions = true;
+        errorMessage += "2. Configure OAuth consent screen\n";
+        errorMessage += "3. Add Gmail scopes (gmail.readonly, gmail.modify)\n";
+        errorMessage += "4. Add your email as a TEST USER\n";
+        errorMessage += "5. Save and try again";
       } else if (error === "oauth_not_configured") {
         errorMessage = "Gmail OAuth is not configured.\n\n";
-        errorMessage += "Please set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in your .env.local file.";
-        showSetupInstructions = true;
-      } else if (error === "token_exchange_failed" || error.includes("token_exchange")) {
-        errorMessage = "Failed to exchange authorization code.\n\n";
+        errorMessage += "Please set GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in your .env.local file.\n\n";
+        errorMessage += "Visit /api/gmail/test to check your configuration.";
+      } else if (error === "token_exchange_failed" || error.includes("token_exchange") || error.includes("invalid_client")) {
+        errorMessage = "OAuth Configuration Error\n\n";
         errorMessage += "This usually means:\n";
-        errorMessage += "1. The redirect URI doesn't match\n";
-        errorMessage += "2. The authorization code expired\n";
-        errorMessage += "3. Client secret is incorrect\n\n";
-        errorMessage += "Details: " + (errorDetails || "Unknown error");
-        showSetupInstructions = true;
+        errorMessage += "1. The redirect URI doesn't match Google Cloud Console\n";
+        errorMessage += "2. The Client ID or Secret is incorrect\n";
+        errorMessage += "3. The authorization code expired\n\n";
+        errorMessage += "Fix:\n";
+        errorMessage += "1. Visit /api/gmail/test to see your current redirect URI\n";
+        errorMessage += "2. Make sure this EXACT URI is in Google Cloud Console\n";
+        errorMessage += "3. Verify GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET in .env.local\n";
+        errorMessage += "4. Restart your dev server";
+        if (errorDetails) {
+          errorMessage += "\n\nDetails: " + errorDetails;
+        }
+      } else if (error === "missing_code") {
+        errorMessage = "OAuth callback error: Missing authorization code.\n\n";
+        errorMessage += "Please try connecting Gmail again.";
       } else if (errorDetails) {
         errorMessage = errorDetails;
       } else {
-        errorMessage = `OAuth error: ${error}`;
-        if (error === "access_denied" || error.includes("blocked")) {
-          errorMessage += "\n\nThis is usually an OAuth consent screen configuration issue.";
-          showSetupInstructions = true;
-        }
-      }
-      
-      if (showSetupInstructions && error !== "invalid_request" && error !== "access_denied") {
-        errorMessage += "\n\nSetup instructions:\n";
-        errorMessage += "1. Go to https://console.cloud.google.com/\n";
-        errorMessage += "2. Create/select a project\n";
-        errorMessage += "3. Enable Gmail API\n";
-        errorMessage += "4. Create OAuth 2.0 Client ID (Web application)\n";
-        errorMessage += "5. Add redirect URI: " + window.location.origin + "/api/gmail/callback\n";
-        errorMessage += "6. Copy Client ID and Secret to .env.local";
+        errorMessage = `OAuth error: ${error}\n\n`;
+        errorMessage += "Visit /api/gmail/test to check your configuration.";
       }
       
       alert(errorMessage);
@@ -227,30 +219,44 @@ const SyncPage = () => {
       if (!isAuthenticated) return;
       
       const { data: { session } } = await supabaseBrowserClient.auth.getSession();
-      const authToken = session?.access_token || (process.env.NODE_ENV !== "production" ? "dev-token" : null);
-      if (!authToken && process.env.NODE_ENV === "production") return;
+      if (!session?.access_token) return;
 
       const res = await fetch("/api/gmail/emails?check=true", {
         headers: { 
-          Authorization: `Bearer ${authToken}`,
-          ...(process.env.NODE_ENV !== "production" && !session?.access_token && {
-            "X-Dev-User": "true"
-          })
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
       if (res.ok) {
         setIsGmailConnected(true);
         loadGmailEmails();
+      } else if (res.status === 401) {
+        setIsGmailConnected(false);
       }
     } catch (error) {
       console.error("Error checking Gmail connection:", error);
+      setIsGmailConnected(false);
     }
   };
 
   const handleConnectGmail = async () => {
+    // First check if user is authenticated
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      return;
+    }
+
     try {
       setIsConnectingGmail(true);
+      
+      // Get session first
+      const { data: { session }, error: sessionError } = await supabaseBrowserClient.auth.getSession();
+      
+      if (!session?.user) {
+        setIsConnectingGmail(false);
+        openAuthModal("login");
+        return;
+      }
       
       // First, check if OAuth is configured
       try {
@@ -272,33 +278,28 @@ const SyncPage = () => {
         // Continue anyway - might be a network issue
       }
       
-      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
-      
-      // Use session token if available, otherwise use a placeholder for dev mode
-      // Gmail OAuth can proceed without Supabase session - we'll use a dev user ID
-      const authToken = session?.access_token || (process.env.NODE_ENV !== "production" ? "dev-token" : null);
-      
-      // In production, we still want to try - the OAuth flow itself doesn't require our auth
-      // We just need a user ID to store the tokens
-      const userId = session?.user?.id || (process.env.NODE_ENV !== "production" ? "dev-user" : `temp-${Date.now()}`);
+      // Use session token - user must be authenticated
+      const authToken = session.access_token;
+      const userId = session.user.id;
 
       // Pass userId in a header so the API can use it for the OAuth state
+      // Also pass the origin explicitly to ensure correct redirect URI
       const res = await fetch("/api/gmail/auth", {
         headers: { 
-          Authorization: `Bearer ${authToken || "dev-token"}`,
+          Authorization: `Bearer ${authToken}`,
           "X-User-Id": userId,
-          ...(process.env.NODE_ENV !== "production" && !session?.access_token && {
-            "X-Dev-User": "true"
-          })
+          "Origin": window.location.origin,
         },
       });
 
-      const data = await res.json();
-      if (!data.ok) {
+      if (!res.ok) {
         setIsConnectingGmail(false);
         
-        if (data.error === "Unauthorized" && !isAuthenticated) {
-          // If not authenticated and got unauthorized, open auth modal
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        
+        if (res.status === 401 || data.error === "Unauthorized") {
+          // User needs to log in
+          alert("Please log in to connect Gmail.\n\nYou'll be redirected to the login page.");
           openAuthModal("login");
           return;
         }
@@ -311,7 +312,6 @@ const SyncPage = () => {
         if (errorMsg.includes("not configured") || errorMsg.includes("GMAIL_CLIENT_ID") || errorMsg.includes("Invalid Gmail Client ID") || data.setupRequired) {
           alert(
             "Gmail OAuth is not properly configured.\n\n" +
-            "The error 'invalid_client' means your Client ID is missing or incorrect.\n\n" +
             "Setup Steps:\n" +
             "1. Go to https://console.cloud.google.com/\n" +
             "2. Create or select a project\n" +
@@ -320,20 +320,20 @@ const SyncPage = () => {
             "5. Click + CREATE CREDENTIALS → OAuth client ID\n" +
             "6. Application type: Web application\n" +
             "7. Add redirect URI: " + redirectUri + "\n" +
-            "8. Copy the Client ID (long string)\n" +
-            "9. Copy the Client Secret\n" +
-            "10. Open .env.local and replace:\n" +
-            "    GMAIL_CLIENT_ID=your_actual_client_id_here\n" +
-            "    GMAIL_CLIENT_SECRET=your_actual_client_secret_here\n" +
-            "11. Restart your dev server (npm run dev)\n\n" +
-            "Important: Make sure you're using the actual Client ID from Google Cloud Console, not a placeholder!\n\n" +
+            "8. Copy the Client ID and Client Secret\n" +
+            "9. Open .env.local and add:\n" +
+            "    GMAIL_CLIENT_ID=your_actual_client_id\n" +
+            "    GMAIL_CLIENT_SECRET=your_actual_client_secret\n" +
+            "10. Restart your dev server\n\n" +
             "See GMAIL_SETUP.md for detailed instructions."
           );
         } else {
-          alert(`Failed to connect Gmail: ${errorMsg}${details}\n\nIf you see "invalid_client", your GMAIL_CLIENT_ID in .env.local is incorrect or missing.`);
+          alert(`Failed to connect Gmail: ${errorMsg}${details}\n\nVisit /api/gmail/test to check your configuration.`);
         }
         return;
       }
+      
+      const data = await res.json();
       
       if (!data.authUrl) {
         setIsConnectingGmail(false);
@@ -441,18 +441,14 @@ const SyncPage = () => {
       
       setIsLoadingEmails(true);
       const { data: { session } } = await supabaseBrowserClient.auth.getSession();
-      const authToken = session?.access_token || (process.env.NODE_ENV !== "production" ? "dev-token" : null);
-      if (!authToken && process.env.NODE_ENV === "production") {
+      if (!session?.access_token) {
         setIsLoadingEmails(false);
         return;
       }
 
       const res = await fetch("/api/gmail/emails", {
         headers: { 
-          Authorization: `Bearer ${authToken}`,
-          ...(process.env.NODE_ENV !== "production" && !session?.access_token && {
-            "X-Dev-User": "true"
-          })
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
@@ -470,10 +466,7 @@ const SyncPage = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-            ...(process.env.NODE_ENV !== "production" && !session?.access_token && {
-              "X-Dev-User": "true"
-            })
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ emails: data.emails }),
         });

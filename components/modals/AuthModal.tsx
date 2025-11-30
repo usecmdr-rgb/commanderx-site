@@ -14,6 +14,7 @@ const AuthModal = () => {
   const t = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Helper function to convert Supabase errors to user-friendly messages
   const getErrorMessage = (error: any, mode: "login" | "signup"): string => {
@@ -193,6 +194,38 @@ const AuthModal = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: oauthError } = await supabaseBrowserClient.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/app`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (oauthError) {
+        console.error("Google OAuth error:", oauthError);
+        setError("Failed to sign in with Google. Please try again.");
+        setIsGoogleLoading(false);
+        return;
+      }
+
+      // The OAuth flow will redirect, so we don't need to do anything else here
+      // The redirect will happen automatically
+    } catch (err: any) {
+      console.error("Error initiating Google sign-in:", err);
+      setError("Failed to sign in with Google. Please try again.");
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <Modal
       title={authModalMode === "signup" ? t("createAccount") : t("welcomeBack")}
@@ -203,12 +236,13 @@ const AuthModal = () => {
       <div className="space-y-4">
         <button
           type="button"
+          onClick={handleGoogleSignIn}
           aria-label={t("continueWithGoogle")}
-          className="flex w-full items-center justify-center space-x-2 rounded-full border border-slate-200 px-4 py-2 font-medium shadow-sm hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:border-slate-700 dark:hover:bg-slate-900 dark:focus-visible:outline-white"
-          disabled={isSubmitting}
+          className="flex w-full items-center justify-center space-x-2 rounded-full border border-slate-200 px-4 py-2 font-medium shadow-sm hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:border-slate-700 dark:hover:bg-slate-900 dark:focus-visible:outline-white disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isSubmitting || isGoogleLoading}
         >
           <Mail size={18} aria-hidden="true" />
-          <span>{t("continueWithGoogle")}</span>
+          <span>{isGoogleLoading ? "Connecting..." : t("continueWithGoogle")}</span>
         </button>
         <div className="text-center text-xs uppercase tracking-widest text-slate-400">
           {t("orUseEmail")}

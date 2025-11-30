@@ -61,7 +61,7 @@ export default function AboutPage() {
     "handle a lot of calls and emails",
     "rely on client relationships",
     "create content or run campaigns",
-    "don't have time to babysit a dozen tools",
+    "don&apos;t have time to babysit a dozen tools",
   ];
 
   const philosophyPoints = [
@@ -97,7 +97,7 @@ export default function AboutPage() {
                 <span>Mission</span>
               </div>
               <p className="text-lg sm:text-xl text-slate-300 leading-relaxed max-w-lg">
-                Instead of a single chatbot, it's a network of four specialized agents—Aloha, Sync, Studio, and Insight—all sharing one workspace memory and one brain that learns how you actually work.
+                Instead of a single chatbot, it&apos;s a network of four specialized agents—Aloha, Sync, Studio, and Insight—all sharing one workspace memory and one brain that learns how you actually work.
               </p>
             </div>
             <div className="relative">
@@ -119,7 +119,7 @@ export default function AboutPage() {
                 It connects your calls, inbox, calendar, content, and business signals into a single intelligent system.
               </p>
               <p className="text-lg sm:text-xl text-slate-300 leading-relaxed max-w-3xl mt-4">
-                It doesn't just answer questions—it monitors what's happening, surfaces what matters, and helps you take the next step with one click.
+                It doesn&apos;t just answer questions—it monitors what&apos;s happening, surfaces what matters, and helps you take the next step with one click.
               </p>
             </div>
 
@@ -213,7 +213,7 @@ export default function AboutPage() {
         <div className="py-16 sm:py-20">
           <div className="max-w-4xl">
             <div className="mb-10">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-3">Who it's for</h2>
+              <h2 className="text-3xl sm:text-4xl font-bold mb-3">Who it&apos;s for</h2>
               <p className="text-lg text-slate-300 leading-relaxed max-w-2xl">
                 Built for small and midsize teams that:
               </p>
@@ -235,7 +235,7 @@ export default function AboutPage() {
 
             <div className="p-8 rounded-2xl bg-slate-900/40 border border-slate-800/50">
               <p className="text-lg text-slate-300 leading-relaxed">
-                If you're a founder, operator, agency, or lean team trying to do more with less, it acts like a Chief of Staff that never sleeps—watching, organizing, and nudging the right actions.
+                If you&apos;re a founder, operator, agency, or lean team trying to do more with less, it acts like a Chief of Staff that never sleeps—watching, organizing, and nudging the right actions.
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function AboutPage() {
               <div className="relative z-10">
                 <h2 className="text-3xl sm:text-4xl font-bold mb-5">Our philosophy</h2>
                 <p className="text-lg sm:text-xl text-slate-300 leading-relaxed mb-5">
-                  We believe AI shouldn't be a toy bolted onto your tools.
+                  We believe AI shouldn&apos;t be a toy bolted onto your tools.
                 </p>
                 <p className="text-lg text-slate-300 leading-relaxed mb-6">
                   It should be the nervous system of your workflow:

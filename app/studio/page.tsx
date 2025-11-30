@@ -13,6 +13,7 @@ import { AGENT_BY_ID } from "@/lib/config/agents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getLanguageFromLocale } from "@/lib/localization";
 import type { ConnectedAccountType } from "@/types";
+import StudioIntelligence from "@/components/studio/StudioIntelligence";
 import { Download, Facebook, Instagram, Maximize2, X, Plus, Trash2, Bold, Italic, Underline, Sparkles, Send, Linkedin, Globe, Check, Loader2, SlidersHorizontal, Wand2, Crop, RotateCw, RotateCcw, FlipHorizontal, FlipVertical, ChevronDown, ChevronUp, Type, Image as ImageIcon, Video, ArrowUp, ArrowDown } from "lucide-react";
 
 const filters = [
@@ -1384,16 +1385,28 @@ function StudioModeToolbar({
   activeMode: EditMode;
   onModeChange: (mode: EditMode) => void;
 }) {
-  const modes: { id: EditMode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: "adjust", label: "Adjust", icon: SlidersHorizontal },
-    { id: "filters", label: "Filters", icon: Wand2 },
-    { id: "crop", label: "Crop", icon: Crop },
+  const modes: { id: EditMode; label: string }[] = [
+    { id: "adjust", label: "Adjust" },
+    { id: "filters", label: "Filters" },
+    { id: "crop", label: "Crop" },
   ];
+
+  const getIcon = (id: EditMode) => {
+    switch (id) {
+      case "adjust":
+        return <SlidersHorizontal className="h-4 w-4" />;
+      case "filters":
+        return <Wand2 className="h-4 w-4" />;
+      case "crop":
+        return <Crop className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="flex items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-800">
       {modes.map((mode) => {
-        const Icon = mode.icon;
         const isActive = activeMode === mode.id;
         return (
           <button
@@ -1406,7 +1419,7 @@ function StudioModeToolbar({
                 : "text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700"
             }`}
           >
-            <Icon className="h-4 w-4" />
+            {getIcon(mode.id)}
             <span className="text-xs font-medium">{mode.label}</span>
           </button>
         );
@@ -4084,6 +4097,13 @@ export default function StudioPage() {
           previewTransform={previewTransform || undefined}
           cropAspectRatio={cropAspectRatio}
         />
+      )}
+
+      {/* Studio Intelligence - only show when not in preview */}
+      {!isPreview && activeTab === "edit" && (
+        <div className="mt-8">
+          <StudioIntelligence />
+        </div>
       )}
     </div>
   );

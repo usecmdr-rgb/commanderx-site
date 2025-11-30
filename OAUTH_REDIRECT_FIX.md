@@ -15,21 +15,21 @@ Supabase has a **Site URL** configured in the dashboard that overrides the `redi
 3. Go to **Settings** → **Authentication** → **URL Configuration**
 4. Check the **Site URL** field:
    - If it's set to `https://ovrsee.ai`, this is causing the redirect
-   - For local development, it should be `http://localhost:3001` (or your dev port)
+   - For local development, it should be `http://localhost:3000` (your dev port)
 
 ### Step 2: Update Site URL for Development
 
 **Option A: Change Site URL to localhost (Recommended for Development)**
-- Set **Site URL** to: `http://localhost:3001`
+- Set **Site URL** to: `http://localhost:3000`
 - Add to **Redirect URLs**:
-  - `http://localhost:3001/app`
-  - `http://localhost:3001/**` (wildcard for all localhost routes)
+  - `http://localhost:3000/app`
+  - `http://localhost:3000/**` (wildcard for all localhost routes)
 
 **Option B: Keep Production URL but Add localhost to Redirect URLs**
 - Keep **Site URL** as `https://ovrsee.ai` (for production)
 - Add to **Redirect URLs**:
-  - `http://localhost:3001/app`
-  - `http://localhost:3001/**`
+  - `http://localhost:3000/app`
+  - `http://localhost:3000/**`
   - `https://ovrsee.ai/app`
   - `https://ovrsee.ai/**`
 
@@ -45,16 +45,20 @@ Supabase has a **Site URL** configured in the dashboard that overrides the `redi
 
 1. Clear browser cookies for localhost and ovrsee.ai
 2. Try signing in with Google again
-3. You should stay on `localhost:3001/app` after authentication
+3. You should stay on `localhost:3000/app` after authentication
 
 ## Code Verification
 
-The code in `components/modals/AuthModal.tsx` correctly uses:
+The code in `components/modals/AuthModal.tsx` now explicitly forces localhost:3000 for development:
 ```typescript
-redirectTo: `${window.location.origin}/app`
+// Force localhost:3000 for development, prevent redirects to production
+const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const redirectUrl = isLocalhost 
+  ? `http://localhost:3000/app`
+  : `${window.location.origin}/app`;
 ```
 
-This will be `http://localhost:3001/app` when running locally, so the issue is in Supabase configuration, not the code.
+This ensures you stay on `localhost:3000` during development and prevents redirects to production.
 
 ## Production vs Development
 
@@ -63,6 +67,6 @@ For production, you'll want:
 - **Redirect URLs**: Include both production and development URLs
 
 For development, temporarily set:
-- **Site URL**: `http://localhost:3001`
-- **Redirect URLs**: `http://localhost:3001/app` and `http://localhost:3001/**`
+- **Site URL**: `http://localhost:3000`
+- **Redirect URLs**: `http://localhost:3000/app` and `http://localhost:3000/**`
 

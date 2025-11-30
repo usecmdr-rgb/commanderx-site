@@ -199,11 +199,17 @@ const AuthModal = () => {
     setError(null);
 
     try {
-      // Use explicit localhost URL for development, or current origin for production
+      // Force localhost:3000 for development, prevent redirects to production
       const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const redirectUrl = isLocalhost 
-        ? `${window.location.protocol}//${window.location.host}/app`
-        : `${window.location.origin}/app`;
+      let redirectUrl: string;
+      
+      if (isLocalhost) {
+        // Always use localhost:3000 for development, regardless of current port
+        redirectUrl = `http://localhost:3000/app`;
+      } else {
+        // Production: use current origin
+        redirectUrl = `${window.location.origin}/app`;
+      }
       
       console.log("[OAuth] Redirect URL:", redirectUrl);
       

@@ -27,7 +27,7 @@ const UserMenu = () => {
     { id: "business", label: t("userMenuBusinessInfo") },
     { id: "billing", label: t("userMenuBilling") },
     { id: "settings", label: t("userMenuSettings") },
-    { id: "privacy", label: "Privacy Policy", href: "/privacy" },
+    { id: "privacy", label: t("userMenuPrivacy"), href: "/privacy" },
     { id: "terms", label: t("userMenuTerms"), href: "/terms" },
   ];
 

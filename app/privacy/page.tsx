@@ -1,32 +1,35 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { Shield } from "lucide-react";
 
 export default function PrivacyPage() {
+  const t = useTranslation();
+
   const sections = [
     {
-      title: "Information We Collect",
-      content: "We collect information that you provide directly to us, such as when you create an account, use our services, or contact us for support. This may include your name, email address, phone number, and any content you upload or create through our services.",
+      title: t("privacySection1Title"),
+      content: t("privacySection1Content"),
     },
     {
-      title: "How We Use Your Information",
-      content: "We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and communicate with you about products, services, and promotional offers.",
+      title: t("privacySection2Title"),
+      content: t("privacySection2Content"),
     },
     {
-      title: "Data Storage and Security",
-      content: "We implement appropriate technical and organizational measures to protect your personal information. Your data is stored securely and we use industry-standard encryption to protect data in transit and at rest.",
+      title: t("privacySection3Title"),
+      content: t("privacySection3Content"),
     },
     {
-      title: "Third-Party Services",
-      content: "We may use third-party services (such as Google, Stripe, and Twilio) to provide certain features. These services have their own privacy policies governing the use of your information.",
+      title: t("privacySection4Title"),
+      content: t("privacySection4Content"),
     },
     {
-      title: "Your Rights",
-      content: "You have the right to access, update, or delete your personal information. You can manage your data through your account settings or by contacting us directly.",
+      title: t("privacySection5Title"),
+      content: t("privacySection5Content"),
     },
     {
-      title: "Changes to This Policy",
-      content: "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the \"Last updated\" date.",
+      title: t("privacySection6Title"),
+      content: t("privacySection6Content"),
     },
   ];
 
@@ -41,14 +44,14 @@ export default function PrivacyPage() {
                 <Shield className="h-6 w-6 text-blue-500" />
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-                Privacy Policy
+                {t("privacyPageTitle")}
               </h1>
             </div>
             <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
-              Your privacy is important to us. This policy explains how we collect, use, and protect your personal information.
+              {t("privacyPageDescription")}
             </p>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              Last updated: December 2024
+              {t("privacyLastUpdated")}
             </p>
           </div>
         </div>
@@ -76,10 +79,10 @@ export default function PrivacyPage() {
           {/* Contact Section */}
           <div className="mt-12 p-6 sm:p-8 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-slate-200 dark:border-slate-800/50">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
-              Contact Us
+              {t("privacyContactTitle")}
             </h2>
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              If you have questions about this Privacy Policy or our data practices, please contact us:
+              {t("privacyContactDescription")}
             </p>
             <p className="text-base text-slate-600 dark:text-slate-300">
               <strong className="text-slate-900 dark:text-slate-100">Email:</strong>{" "}

@@ -1,21 +1,24 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { FileText } from "lucide-react";
 
 export default function TermsPage() {
+  const t = useTranslation();
+
   const statements = [
-    "OVRSEE is provided \"as is\" and \"as available\" without any warranties of any kind.",
-    "The service uses experimental AI models which may generate incorrect, incomplete, or misleading information. Outputs should not be relied on as professional advice (including but not limited to legal, financial, medical, or HR advice).",
-    "Users remain solely responsible for any decisions or actions they take based on the service's outputs.",
-    "OVRSEE is not responsible for missed calls, missed emails, calendar errors, or any loss, damage, or liability arising from delays, inaccuracies, or omissions in the service.",
-    "Users are responsible for reviewing and verifying any AI-generated drafts, summaries, or suggested actions before sending or acting on them.",
-    "Users must ensure they have the necessary rights and permissions to provide any data, media, or content they upload and must not upload illegal or infringing content.",
-    "OVRSEE may store and process user data to provide and improve the service, in accordance with a separate Privacy Policy.",
-    "Access to the service is subscription-based. Users are responsible for cancelling subscriptions if they no longer wish to be billed. Fees are generally non-refundable except where required by applicable law.",
-    "OVRSEE may modify or discontinue features at any time and may update these Terms periodically.",
-    "To the maximum extent permitted by law, OVRSEE's total liability for any claims related to the service is limited to the amount the user paid for the service in the 3 months preceding the claim.",
-    "Users agree to use the service in compliance with all applicable laws and regulations.",
-    "This text is a placeholder and should be replaced or reviewed by a qualified attorney before production use.",
+    t("termsStatement1"),
+    t("termsStatement2"),
+    t("termsStatement3"),
+    t("termsStatement4"),
+    t("termsStatement5"),
+    t("termsStatement6"),
+    t("termsStatement7"),
+    t("termsStatement8"),
+    t("termsStatement9"),
+    t("termsStatement10"),
+    t("termsStatement11"),
+    t("termsStatement12"),
   ];
 
   return (
@@ -29,14 +32,14 @@ export default function TermsPage() {
                 <FileText className="h-6 w-6 text-purple-500" />
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
-                Terms of Service
+                {t("termsPageTitle")}
               </h1>
             </div>
             <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
-              Please review these terms carefully before using OVRSEE.
+              {t("termsPageDescription")}
             </p>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-              Last updated: December 2024
+              {t("termsLastUpdated")}
             </p>
           </div>
         </div>
@@ -68,10 +71,10 @@ export default function TermsPage() {
           {/* Contact Section */}
           <div className="mt-12 p-6 sm:p-8 rounded-xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-slate-200 dark:border-slate-800/50">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
-              Questions About These Terms?
+              {t("termsContactTitle")}
             </h2>
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-              If you have questions about these Terms of Service, please contact us:
+              {t("termsContactDescription")}
             </p>
             <p className="text-base text-slate-600 dark:text-slate-300">
               <strong className="text-slate-900 dark:text-slate-100">Email:</strong>{" "}

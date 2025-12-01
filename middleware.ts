@@ -141,7 +141,7 @@ export async function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co https://api.stripe.com https://hooks.stripe.com",
+    "connect-src 'self' https://*.supabase.co https://auth.ovrsee.ai https://api.stripe.com https://hooks.stripe.com",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",

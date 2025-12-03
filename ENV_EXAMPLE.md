@@ -82,10 +82,27 @@ STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 # Stripe webhook secret (get from Stripe Dashboard → Webhooks)
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
-# Stripe Price IDs for subscription tiers
-STRIPE_PRICE_ID_BASIC=price_your_basic_tier_price_id
-STRIPE_PRICE_ID_ADVANCED=price_your_advanced_tier_price_id
-STRIPE_PRICE_ID_ELITE=price_your_elite_tier_price_id
+# Stripe Price IDs for subscription tiers (individual plans)
+# Essentials: $39.99/month or $439/year (11 months = 1 month free)
+STRIPE_PRICE_ID_ESSENTIALS_MONTHLY=price_your_essentials_monthly_price_id
+STRIPE_PRICE_ID_ESSENTIALS_YEARLY=price_your_essentials_yearly_price_id
+
+# Professional: $79.99/month or $879/year (11 months = 1 month free)
+STRIPE_PRICE_ID_PROFESSIONAL_MONTHLY=price_your_professional_monthly_price_id
+STRIPE_PRICE_ID_PROFESSIONAL_YEARLY=price_your_professional_yearly_price_id
+
+# Executive: $129.99/month or $1,429/year (11 months = 1 month free)
+STRIPE_PRICE_ID_EXECUTIVE_MONTHLY=price_your_executive_monthly_price_id
+STRIPE_PRICE_ID_EXECUTIVE_YEARLY=price_your_executive_yearly_price_id
+
+# Legacy tier names (for backward compatibility, optional)
+# STRIPE_PRICE_ID_BASIC=price_your_basic_tier_price_id
+# STRIPE_PRICE_ID_ADVANCED=price_your_advanced_tier_price_id
+# STRIPE_PRICE_ID_ELITE=price_your_elite_tier_price_id
+
+# Add-ons (optional)
+# STRIPE_PRICE_ID_ALOHA_ADDON=price_your_aloha_addon_price_id
+# STRIPE_PRICE_ID_STUDIO_ADDON=price_your_studio_addon_price_id
 
 # ============================================================================
 # Analytics & Monitoring (Optional)

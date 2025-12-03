@@ -132,15 +132,34 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
 
       // Save customer ID to Supabase
+      // Use upsert with onConflict to only update stripe_customer_id, avoiding trigger issues
       const { error: updateError } = await supabase
         .from("profiles")
-        .upsert({
-          id: userId,
-          stripe_customer_id: customerId,
-        });
+        .upsert(
+          {
+            id: userId,
+            stripe_customer_id: customerId,
+          },
+          {
+            onConflict: "id",
+            ignoreDuplicates: false,
+          }
+        );
 
       if (updateError) {
-        console.error("Error saving Stripe customer ID:", updateError);
+        // If upsert fails due to missing updated_at column, try simple update
+        if (updateError.message?.includes("updated_at")) {
+          const { error: simpleUpdateError } = await supabase
+            .from("profiles")
+            .update({ stripe_customer_id: customerId })
+            .eq("id", userId);
+          
+          if (simpleUpdateError) {
+            console.error("Error saving Stripe customer ID:", simpleUpdateError);
+          }
+        } else {
+          console.error("Error saving Stripe customer ID:", updateError);
+        }
         // Continue anyway - we can sync this later
       }
     }

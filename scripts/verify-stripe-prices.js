@@ -12,7 +12,12 @@
  *   STRIPE_SECRET_KEY=sk_test_... node scripts/verify-stripe-prices.js
  */
 
-require('dotenv').config({ path: '.env.local' });
+// Try to load .env.local if dotenv is available, otherwise rely on process.env
+try {
+  require('dotenv').config({ path: '.env.local' });
+} catch (e) {
+  // dotenv not available, rely on process.env (already loaded by Next.js)
+}
 
 const requiredPriceIds = [
   'STRIPE_PRICE_ID_ESSENTIALS_MONTHLY',

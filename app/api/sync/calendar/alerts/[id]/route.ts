@@ -8,9 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedSupabaseFromRequest } from "@/lib/auth-helpers";
 import { getWorkspaceIdForUser } from "@/lib/workspace-helpers";
 
+// Note: use a generic context type for compatibility with different Next.js versions.
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const { supabaseClient, user, responseHeaders } =
@@ -24,7 +25,7 @@ export async function DELETE(
       );
     }
 
-    const alertId = params.id;
+    const alertId: string | undefined = context?.params?.id;
 
     if (!alertId) {
       return NextResponse.json(

@@ -8,9 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedSupabaseFromRequest } from "@/lib/auth-helpers";
 import { getWorkspaceIdForUser } from "@/lib/workspace-helpers";
 
+// Use a generic context param for compatibility with Next.js route handler typing.
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const { supabaseClient, user, responseHeaders } =
@@ -24,7 +25,7 @@ export async function GET(
       );
     }
 
-    const messageId = params.id;
+    const messageId: string | undefined = context?.params?.id;
 
     if (!messageId) {
       return NextResponse.json(

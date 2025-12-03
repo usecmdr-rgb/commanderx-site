@@ -5,12 +5,14 @@ import { requireAuthFromRequest } from "@/lib/auth-helpers";
 import { validateRequestBody, stripeCheckoutRequestSchema, createErrorResponse } from "@/lib/validation";
 import {
   PLAN_PRICING,
+  PRICING_CONFIG,
   getStripePriceId,
   mapTierToPlanCode,
   type BillingInterval,
   type CorePlanCode,
 } from "@/lib/pricingConfig";
 import { hasUserUsedEssentialsTrial } from "@/lib/trial-eligibility";
+import Stripe from "stripe";
 
 /**
  * POST /api/stripe/checkout
@@ -81,9 +83,22 @@ export async function POST(request: NextRequest) {
     // Get Stripe price ID based on billing interval
     const priceId = getStripePriceId(planCode, interval);
     
-    if (!priceId) {
+    // Validate price ID: must be a non-empty string starting with "price_"
+    // Never pass a number or empty string to Stripe
+    if (!priceId || typeof priceId !== 'string' || priceId.trim() === '' || !priceId.startsWith('price_')) {
+      console.error(`Invalid Stripe price ID for ${planCode} (${interval}):`, priceId, `(type: ${typeof priceId})`);
       return createErrorResponse(
-        `Stripe price ID not configured for ${planCode} (${interval})`,
+        `Stripe price ID not configured for ${planCode} (${interval}). Please check your environment variables (STRIPE_PRICE_ID_${planCode.toUpperCase()}_${interval.toUpperCase()}).`,
+        500
+      );
+    }
+    
+    // Double-check: ensure priceId is definitely a string and not accidentally a number
+    const validatedPriceId = String(priceId).trim();
+    if (!validatedPriceId.startsWith('price_')) {
+      console.error(`Price ID validation failed for ${planCode} (${interval}):`, validatedPriceId);
+      return createErrorResponse(
+        `Invalid Stripe price ID format for ${planCode} (${interval}). Price IDs must start with "price_".`,
         500
       );
     }
@@ -130,8 +145,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get plan config to check trial eligibility
-    const planConfig = PLAN_PRICING[planCode];
+    // Get plan config to check trial eligibility (use PRICING_CONFIG for hasTrial/trialDays)
+    const planConfig = PRICING_CONFIG.plans[planCode];
     
     // Check if user is converting from a previous subscription/trial
     const { data: currentSubscription } = await supabase
@@ -196,7 +211,7 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: priceId, // Use price ID based on billing cycle
+          price: validatedPriceId, // Use validated price ID (must start with "price_")
           quantity: 1,
         },
       ],

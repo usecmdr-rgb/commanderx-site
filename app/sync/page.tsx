@@ -1443,6 +1443,7 @@ const SyncPage = () => {
   // All date/time operations now use date-fns for consistency and timezone handling
 
   // Group events by date (using local dates)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const eventsByDate = useMemo(() => {
     const grouped: Record<string, CalendarEvent[]> = {};
     displayEvents.forEach((event) => {

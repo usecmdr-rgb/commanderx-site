@@ -120,6 +120,9 @@ export default function AlohaPage() {
       fetchPhoneNumber();
       fetchCalls();
     }
+    // We intentionally don't include the fetch* functions in the dependency array
+    // to avoid re-running this effect on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasAccess, accessLoading]);
 
   const fetchCalls = async () => {

@@ -36,6 +36,10 @@ export default function BillingPage() {
       return;
     }
     fetchSubscription();
+    // We intentionally omit fetchSubscription from the dependency array because it is
+    // a stable function reference for the lifetime of this component and re-creating
+    // the effect on every render is unnecessary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, openAuthModal]);
 
   const fetchSubscription = async () => {

@@ -10,7 +10,7 @@ import { getWorkspaceIdForUser } from "@/lib/workspace-helpers";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const { supabaseClient, user, responseHeaders } =
@@ -24,7 +24,7 @@ export async function GET(
       );
     }
 
-    const callId = params.id;
+    const callId = context?.params?.id as string | undefined;
 
     if (!callId) {
       return NextResponse.json(

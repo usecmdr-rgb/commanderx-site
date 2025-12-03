@@ -108,7 +108,7 @@ export default function PricingTable() {
         priceInCents,
       };
     });
-  }, [t, language, billingCycle]);
+  }, [language, billingCycle]);
 
   const rows = useMemo(() => {
     // Get agents in the correct order: Sync, Aloha, Studio, Insight
